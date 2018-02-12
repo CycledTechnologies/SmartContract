@@ -15,9 +15,6 @@ contract CycledToken is StandardToken, Ownable {
     /// Base exchange rate is set to 1 ETH = 10,000 CYD.
     uint256 public constant BASE_RATE = 10000;
 
-    /// token trading opening time
-    uint64 private constant date01May2018 = 1525219199;
-
     // presale start time 15 Mar, 2018
     uint64 private constant date15Mar2018 = 1521072000;
 
@@ -30,6 +27,9 @@ contract CycledToken is StandardToken, Ownable {
 
     /// investors can directly invest and get the token when this is set to "true"
     bool public tokenDirectPayable = false;
+
+    /// investors can directly invest and get the token when this is set to "true"
+    bool public tradingOpen = false;
 
     /// Issue event index starting from 0.
     uint64 public issueIndex = 0;
@@ -55,11 +55,6 @@ contract CycledToken is StandardToken, Ownable {
         _;
     }
 
-    /// Enable token transfer  
-    modifier tradingOpen {
-        require(uint64(block.timestamp) > date01May2018);
-        _;
-    }
     //// Modifiers end
     
     function CycledToken() public {
@@ -73,6 +68,16 @@ contract CycledToken is StandardToken, Ownable {
     /// @dev disable the direct pay to contract
     function disableDirectPay() public onlyOwner beforeEnd {
         tokenDirectPayable = false;
+    }
+
+     /// @dev enable the token trading
+    function enableTrading() public onlyOwner {
+        tradingOpen = true;
+    }
+  
+    /// @dev disable the token trading
+    function disableTrading() public onlyOwner {
+        tradingOpen = false;
     }
 
     /// @dev This default function allows token to be purchased by directly
@@ -165,12 +170,14 @@ contract CycledToken is StandardToken, Ownable {
     }
 
     /// Transfer limited by the tradingOpen modifier (time is 01 May 2018 or later)
-    function transferFrom(address _from, address _to, uint256 _value) public tradingOpen returns (bool) {
+    function transferFrom(address _from, address _to, uint256 _value) public returns (bool) {
+        require(tradingOpen);
         return super.transferFrom(_from, _to, _value);
     }
 
     /// Transfer limited by the tradingOpen modifier (time is 01 May 2018 or later)
-    function transfer(address _to, uint256 _value) public tradingOpen returns (bool) {
+    function transfer(address _to, uint256 _value) public returns (bool) {
+        require(tradingOpen);
         return super.transfer(_to, _value);
     }
 }
