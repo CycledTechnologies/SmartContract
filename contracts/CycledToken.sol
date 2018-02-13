@@ -88,13 +88,13 @@ contract CycledToken is StandardToken, Ownable {
         
     }
 
-    /// Transfer limited by the tradingOpen modifier (time is 01 May 2018 or later)
+    /// Transfer limited by the tradingOpen modifier 
     function transferFrom(address _from, address _to, uint256 _value) public returns (bool) {
         require(tradingOpen);
         return super.transferFrom(_from, _to, _value);
     }
 
-    /// Transfer limited by the tradingOpen modifier (time is 01 May 2018 or later)
+    /// Transfer limited by the tradingOpen modifier 
     function transfer(address _to, uint256 _value) public returns (bool) {
         require(tradingOpen);
         return super.transfer(_to, _value);
