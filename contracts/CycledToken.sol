@@ -55,13 +55,6 @@ contract CycledToken is StandardToken, Ownable {
     /// @param _beneficiary addresses that the presale tokens will be sent to.
     /// @param _tokens the amount of tokens, with decimals expanded (full).
     function issueTokens(address _beneficiary, uint256 _tokens) public onlyOwner inProgress {
-        doIssueTokens(_beneficiary, _tokens.mul(10**uint256(decimals)));
-    }
-
-    /// @dev issue tokens for a single buyer
-    /// @param _beneficiary addresses that the tokens will be sent to.
-    /// @param _tokens the amount of tokens, with decimals expanded (full).
-    function doIssueTokens(address _beneficiary, uint256 _tokens) internal {
         require(_beneficiary != address(0));
 
         // compute without actually increasing it
@@ -80,7 +73,7 @@ contract CycledToken is StandardToken, Ownable {
         // event is fired when tokens issued
         Issue(issueIndex++, _beneficiary, _tokens);
     }
-
+    
     /// @dev Closes the sale, 
     function close() public onlyOwner beforeEnd {
         /// no more tokens can be issued after this line
