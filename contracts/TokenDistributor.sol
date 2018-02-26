@@ -100,4 +100,39 @@ contract TokenDistributor is Ownable {
         tokenSaleClosed = true;
     }
 
+    function getTokenAfterDiscount(uint256 _token, uint256 _tokenSold) internal view returns (uint256) {
+        uint256 fiftyPerDiscountedToken = 0;
+        uint256 thirtyPerDiscountedToken = 0;
+        
+        uint256 maxTokenForMaxDiscount = (75000000 * 10**uint256(18));
+        
+        if (_tokenSold >= maxTokenForMaxDiscount) {
+            //Apply 30% discount
+            fiftyPerDiscountedToken = 0;
+            thirtyPerDiscountedToken = _token;
+        }
+        else {
+            uint256 tokenSoldAfterCurrentToken = _tokenSold.add(_token);
+            if (tokenSoldAfterCurrentToken > maxTokenForMaxDiscount) {
+                //Calculate partial Tokens for 50% and 30% discount
+                uint256 remainingMaxTokenForMaxDiscount = maxTokenForMaxDiscount.sub(_tokenSold);
+                uint256 difference = 0;
+                if (remainingMaxTokenForMaxDiscount > _token) {
+                    difference = remainingMaxTokenForMaxDiscount.sub(_token);
+                }
+                else {
+                    difference = _token.sub(remainingMaxTokenForMaxDiscount);
+                }
+                fiftyPerDiscountedToken = _token.sub(difference);
+                thirtyPerDiscountedToken = _token.sub(fiftyPerDiscountedToken);
+            } 
+            else {
+                //Apply 50% discount
+                fiftyPerDiscountedToken = _token;
+                thirtyPerDiscountedToken = 0;
+            }
+        }
+        return _token.add(fiftyPerDiscountedToken.mul(50).div(100) + thirtyPerDiscountedToken.mul(30).div(100));
+    } 
+
 }
