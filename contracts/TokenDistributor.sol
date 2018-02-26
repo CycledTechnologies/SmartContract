@@ -53,7 +53,7 @@ contract TokenDistributor is Ownable {
         require(_tokenAddress != address(0));
 
         baseRate = _rate;
-        token = CTestToken(_tokenAddress);
+        token = CycledToken(_tokenAddress);
     }
 
     /// @dev Issue tokens for a single buyer on the presale
