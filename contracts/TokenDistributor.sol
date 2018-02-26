@@ -2,13 +2,13 @@ pragma solidity ^0.4.18;
 
 import "../node_modules/zeppelin-solidity/contracts/math/SafeMath.sol";
 import "../node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol";
-import "./CTestToken.sol";
+import "./CycledToken.sol";
 
 contract TokenDistributor is Ownable {
     using SafeMath for uint256;
 
     // The token being sold
-    CTestToken private token;
+    CycledToken private token;
 
     // USe to set the base rate
     uint256 private baseRate;
@@ -32,12 +32,6 @@ contract TokenDistributor is Ownable {
 
     /// Emitted for each sucuessful token purchase.
     event Issue(uint64 issueIndex, address addr, uint256 tokenAmount);
-
-    /// Pre-Sale start Date
-    uint64 private constant date15Mar2018 = 1519381303;
-
-    /// Pre-Sale end Date
-    uint64 private constant date12Apr2018 = 1525219199;
 
     modifier inProgress {
         require(tokenSold <= PRESALE_SUPPLY && !tokenSaleClosed);
