@@ -17,7 +17,7 @@ contract TokenDistributor is Ownable {
 
     // The token being sold
     CycledToken private token;
-
+    
     // USe to set the base rate
     uint256 private baseRate;
 
@@ -29,6 +29,12 @@ contract TokenDistributor is Ownable {
 
     
     uint8 private constant DECIMAL = 18;
+    
+    // Set the max limit for pre sale cap
+    uint256 preSaleMaxCap = 200000000 * 10**uint256(DECIMAL);
+    
+    //Set the min limit of main sale cap
+    uint256 mainSaleMinCap = 300000000 * 10**uint256(DECIMAL);
 
     /// no tokens can be ever issued when this is set to "true"
     bool public preSaleRunning = false;
@@ -71,6 +77,27 @@ contract TokenDistributor is Ownable {
         baseRate = _rate;
         token = CycledToken(_tokenAddress);
     }
+    
+    ///Returns main sale cap including remaining balance from pre sale
+    function getMainSaleCap() internal view returns (uint256) {
+        require(!preSaleRunning);
+        uint256 preSaleRemainingTokens = preSaleMaxCap.sub(tokenSold);
+        return mainSaleMinCap.add(preSaleRemainingTokens);
+    }
+    
+    /*
+    * @param _token the token that needs to be validated against what has been distributed and the tokens are in max cap
+    */
+    function validateTransfer(uint256 _token) internal view {
+        uint256 totalTokenSold = tokenSold;
+        if (preSaleRunning) {
+            require(totalTokenSold.add(_token) <= preSaleMaxCap);
+        }
+        else {
+            require(totalTokenSold.add(_token) <= (mainSaleMinCap + preSaleMaxCap)); 
+        }
+    }
+
 
     /// @dev Issue tokens for a single buyer on the presale
     /// @param _beneficiary addresses that the presale tokens will be sent to.
@@ -79,13 +106,16 @@ contract TokenDistributor is Ownable {
         require(_beneficiary != address(0));
         require(_investedWieAmount != 0);
         require(preSaleRunning || mainSaleRunning);
-
+        
         //Compute number of tokens to transfer
-        uint256 tokens = getTokenAmount(_investedWieAmount);
+        uint256 tokens = getTokenAfterDiscount(_investedWieAmount);
+        
+        validateTransfer(tokens);
 
         // compute without actually increasing it
         uint256 increasedtokenSold = tokenSold.add(tokens);
-
+        
+        
         // increase token total supply
         tokenSold = increasedtokenSold;
         //increase wie raised
@@ -163,39 +193,43 @@ contract TokenDistributor is Ownable {
         tokenSaleClosed = true;
     }
 
-    function getTokenAfterDiscount(uint256 _token, uint256 _tokenSold) internal view returns (uint256) {
+    /*
+    * @param _weiAmount Ether amount from that the token price to be calculated with including discount
+    * @dev returns token amount after applying the discount in pre sale
+    */
+    function getTokenAfterDiscount(uint256 _weiAmount) internal view returns (uint256) {
         uint256 fiftyPerDiscountedToken = 0;
         uint256 thirtyPerDiscountedToken = 0;
-        
+        uint256 _token = _weiAmount.mul(baseRate);
+
         uint256 maxTokenForMaxDiscount = (75000000 * 10**uint256(18));
         
-        if (_tokenSold >= maxTokenForMaxDiscount) {
+        if (!preSaleRunning) {
+            fiftyPerDiscountedToken = 0;
+            thirtyPerDiscountedToken = 0;
+        } else if (tokenSold >= maxTokenForMaxDiscount) {
             //Apply 30% discount
             fiftyPerDiscountedToken = 0;
             thirtyPerDiscountedToken = _token;
-        }
-        else {
-            uint256 tokenSoldAfterCurrentToken = _tokenSold.add(_token);
+        } else {
+            uint256 tokenSoldAfterCurrentToken = tokenSold.add(_token);
             if (tokenSoldAfterCurrentToken > maxTokenForMaxDiscount) {
                 //Calculate partial Tokens for 50% and 30% discount
-                uint256 remainingMaxTokenForMaxDiscount = maxTokenForMaxDiscount.sub(_tokenSold);
+                uint256 remainingMaxTokenForMaxDiscount = maxTokenForMaxDiscount.sub(tokenSold);
                 uint256 difference = 0;
                 if (remainingMaxTokenForMaxDiscount > _token) {
                     difference = remainingMaxTokenForMaxDiscount.sub(_token);
-                }
-                else {
+                } else {
                     difference = _token.sub(remainingMaxTokenForMaxDiscount);
                 }
                 fiftyPerDiscountedToken = _token.sub(difference);
                 thirtyPerDiscountedToken = _token.sub(fiftyPerDiscountedToken);
-            } 
-            else {
+            } else {
                 //Apply 50% discount
                 fiftyPerDiscountedToken = _token;
                 thirtyPerDiscountedToken = 0;
             }
         }
-        return _token.add(fiftyPerDiscountedToken.mul(50).div(100) + thirtyPerDiscountedToken.mul(30).div(100));
+        return _token.add((fiftyPerDiscountedToken.mul(50).div(100).add(thirtyPerDiscountedToken.mul(30).div(100))));
     } 
-
 }
