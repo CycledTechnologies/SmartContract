@@ -7,6 +7,14 @@ import "./CycledToken.sol";
 contract TokenDistributor is Ownable {
     using SafeMath for uint256;
 
+    struct Transfer {
+        uint256 amount;
+        bool transfered;
+    }
+    mapping(address => Transfer) assignedTokens;
+
+    address[] addresses;
+
     // The token being sold
     CycledToken private token;
 
@@ -36,6 +44,9 @@ contract TokenDistributor is Ownable {
 
     /// Emitted for each sucuessful token purchase.
     event Issue(uint64 issueIndex, address addr, uint256 tokenAmount);
+
+    /// Emitted for each sucuessful token assigned.
+    event TokenAssigned(address addr, uint256 tokenAmount);
 
     /// Allow the closing to happen only once
     modifier beforeEnd {
@@ -81,12 +92,28 @@ contract TokenDistributor is Ownable {
         weiRaised = weiRaised.add(_investedWieAmount);
 
         //Transfering tokens from issue token wallet to beneficiary wallet
-        token.transferFrom(owner, _beneficiary, tokens);
+        //token.transferFrom(owner, _beneficiary, tokens);
+
+        Transfer storage aT = assignedTokens[_beneficiary];
+        aT.amount = tokens;
+        aT.transfered = false;
+        addresses.push(_beneficiary);
+        TokenAssigned(_beneficiary, tokens);
 
         // event is fired when tokens issued
-        Issue(issueIndex++, _beneficiary, tokens);
     }
 
+
+    function dispatchTokens() public onlyOwner beforeEnd {
+        require(issueIndex < addresses.length);
+        for (uint index = issueIndex; index < addresses.length; index++) {
+            if (!assignedTokens[addresses[index]].transfered) {
+                token.transferFrom(owner, addresses[index], assignedTokens[addresses[index]].amount);
+                assignedTokens[addresses[index]].transfered = true;
+                Issue(issueIndex++, addresses[index], assignedTokens[addresses[index]].amount);
+            }
+        }
+    }
     
     /// @dev Compute the amount of token that can be purchased.
     /// @param _weiAmount Amount of Ether to purchase CYD.
