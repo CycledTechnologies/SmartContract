@@ -31,10 +31,10 @@ contract TokenDistributor is Ownable {
     uint8 private constant DECIMAL = 18;
     
     // Set the max limit for pre sale cap
-    uint256 preSaleMaxCap = 200000000 * 10**uint256(DECIMAL);
+    uint256 preSaleHardCap = 200000000 * 10**uint256(DECIMAL);
     
     //Set the min limit of main sale cap
-    uint256 mainSaleMinCap = 300000000 * 10**uint256(DECIMAL);
+    uint256 mainSaleHardCap = 300000000 * 10**uint256(DECIMAL);
 
     /// no tokens can be ever issued when this is set to "true"
     bool public preSaleRunning = false;
@@ -81,8 +81,8 @@ contract TokenDistributor is Ownable {
     ///Returns main sale cap including remaining balance from pre sale
     function getMainSaleCap() internal view returns (uint256) {
         require(!preSaleRunning);
-        uint256 preSaleRemainingTokens = preSaleMaxCap.sub(tokenSold);
-        return mainSaleMinCap.add(preSaleRemainingTokens);
+        uint256 preSaleRemainingTokens = preSaleHardCap.sub(tokenSold);
+        return mainSaleHardCap.add(preSaleRemainingTokens);
     }
     
     /*
@@ -91,10 +91,9 @@ contract TokenDistributor is Ownable {
     function validateTransfer(uint256 _token) internal view {
         uint256 totalTokenSold = tokenSold;
         if (preSaleRunning) {
-            require(totalTokenSold.add(_token) <= preSaleMaxCap);
-        }
-        else {
-            require(totalTokenSold.add(_token) <= (mainSaleMinCap + preSaleMaxCap)); 
+            require(totalTokenSold.add(_token) <= preSaleHardCap);
+        } else {
+            require(totalTokenSold.add(_token) <= (mainSaleHardCap + preSaleHardCap.sub(tokenSold))); 
         }
     }
 
@@ -231,5 +230,5 @@ contract TokenDistributor is Ownable {
             }
         }
         return _token.add((fiftyPerDiscountedToken.mul(50).div(100).add(thirtyPerDiscountedToken.mul(30).div(100))));
-    } 
+    }
 }
