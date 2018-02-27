@@ -4,11 +4,12 @@ import "../node_modules/zeppelin-solidity/contracts/math/SafeMath.sol";
 import "../node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./CycledToken.sol";
 
+
 contract TokenDistributor is Ownable {
     using SafeMath for uint256;
 
     struct Transfer {
-        uint256 amount;
+        uint256 tokens;
         bool transfered;
     }
     mapping(address => Transfer) assignedTokens;
@@ -42,6 +43,10 @@ contract TokenDistributor is Ownable {
     /// Issue event index starting from 0.
     uint64 public issueIndex = 0;
 
+    address private preSaleWallet;
+
+    address private mainSaleWallet;
+
     /// Emitted for each sucuessful token purchase.
     event Issue(uint64 issueIndex, address addr, uint256 tokenAmount);
 
@@ -64,22 +69,30 @@ contract TokenDistributor is Ownable {
     * @param _rate Number of token units a buyer gets per wei
     * @param _tokenAddress of the token being sold
     */
-    function TokenDistributor(uint256 _rate, address _tokenAddress) public {
+    function TokenDistributor(
+        uint256 _rate, 
+        address _tokenAddress, 
+        address _preSaleWallet,
+        address _mainSaleWallet) public {
+
         require(_rate > 0);
         require(_tokenAddress != address(0));
 
         baseRate = _rate;
+        preSaleWallet = _preSaleWallet;
+        mainSaleWallet = _mainSaleWallet;
         token = CycledToken(_tokenAddress);
     }
 
     /// @dev Issue tokens for a single buyer on the presale
     /// @param _beneficiary addresses that the presale tokens will be sent to.
     /// @param _investedWieAmount the amount to invest, with decimals expanded (full).
-    function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner beforeEnd {
+    function issueTokens(address _beneficiary, uint256 _investedWieAmount) public beforeEnd {
         require(_beneficiary != address(0));
         require(_investedWieAmount != 0);
         require(preSaleRunning || mainSaleRunning);
-
+        isMsgSenderAllowed();
+           
         //Compute number of tokens to transfer
         uint256 tokens = getTokenAmount(_investedWieAmount);
 
@@ -91,26 +104,31 @@ contract TokenDistributor is Ownable {
         //increase wie raised
         weiRaised = weiRaised.add(_investedWieAmount);
 
-        //Transfering tokens from issue token wallet to beneficiary wallet
-        //token.transferFrom(owner, _beneficiary, tokens);
-
+        //Assign the tokens to the _beneficiary
         Transfer storage aT = assignedTokens[_beneficiary];
-        aT.amount = tokens;
+        aT.tokens = tokens;
         aT.transfered = false;
         addresses.push(_beneficiary);
+        // event is fired when tokens assigned
         TokenAssigned(_beneficiary, tokens);
+    }
 
-        // event is fired when tokens issued
+    function isMsgSenderAllowed() internal view {
+        if (preSaleRunning)
+            require(msg.sender == preSaleWallet);
+        else
+            require(msg.sender == mainSaleWallet);
     }
 
 
-    function dispatchTokens() public onlyOwner beforeEnd {
+    function dispatchTokens() public beforeEnd {
+        isMsgSenderAllowed();
         require(issueIndex < addresses.length);
         for (uint index = issueIndex; index < addresses.length; index++) {
             if (!assignedTokens[addresses[index]].transfered) {
-                token.transferFrom(owner, addresses[index], assignedTokens[addresses[index]].amount);
+                token.transferFrom(msg.sender, addresses[index], assignedTokens[addresses[index]].tokens);
                 assignedTokens[addresses[index]].transfered = true;
-                Issue(issueIndex++, addresses[index], assignedTokens[addresses[index]].amount);
+                Issue(issueIndex++, addresses[index], assignedTokens[addresses[index]].tokens);
             }
         }
     }
