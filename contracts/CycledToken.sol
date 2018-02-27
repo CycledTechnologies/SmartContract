@@ -1,95 +1,48 @@
 pragma solidity ^0.4.18;
 
-import "../node_modules/zeppelin-solidity/contracts/token/StandardToken.sol";
-import "../node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol";
+import "../node_modules/zeppelin-solidity/contracts/token/PausableToken.sol";
+import "../node_modules/zeppelin-solidity/contracts/token/BurnableToken.sol";
 
-contract CycledToken is StandardToken, Ownable {
+/**
+ * @title Cycled Token
+ */
+contract CycledToken is PausableToken, BurnableToken {
     string public constant name = "CycledToken";
     string public constant symbol = "CYD";
     uint8 public constant decimals = 18;
 
 
+    address public recyclingIncentivesWallet = 0xd1d1c366a1784bf3f84726F8d6B6E682a248429A;
+    address public cycledTechnologiesWallet = 0xeA6727f33f87e24c910217A252126e03A4732982;
+    address public foundersWallet = 0x1033CD9a066b80edE060E0D0Bed736a52Dc7318B;
+    address public bountyWallet = 0xe1902A70ED3E0c5B0C43782dc84e9b1330a1fCc3;
+
     /// Maximum tokens to be allocated.
-    uint256 public constant HARD_CAP = 100000000 * 10**uint256(decimals);
-
-    /// no tokens can be ever issued when this is set to "true"
-    bool public tokenSaleClosed = false;
-
-    /// investors can directly invest and get the token when this is set to "true"
-    bool public tradingOpen = false;
-
-    /// Issue event index starting from 0.
-    uint64 public issueIndex = 0;
-
-    /// Emitted for each sucuessful token purchase.
-    event Issue(uint64 issueIndex, address addr, uint256 tokenAmount);
-
-    //// Modifiers start
-    modifier inProgress {
-        require(totalSupply < HARD_CAP && !tokenSaleClosed);
-        _;
-    }
-
-    /// Allow the closing to happen only once
-    modifier beforeEnd {
-        require(!tokenSaleClosed);
-        _;
-    }
-
-    //// Modifiers end
+    uint256 public constant HARD_CAP = 1000000000 * 10**uint256(decimals);
     
     function CycledToken() public {
+        totalSupply = HARD_CAP;
+
+        //50% of the hard cap, reserve for sale
+        balances[msg.sender] = totalSupply.mul(50).div(100); 
+        Transfer(0x0, msg.sender, totalSupply);
+
+        //20% of the hard cap, reserve for recycling incentives 
+        balances[recyclingIncentivesWallet] = totalSupply.mul(20).div(100); 
+        Transfer(0x0, recyclingIncentivesWallet, totalSupply);
+
+        //15% of the hard cap, reserve for cycled technologies
+        balances[cycledTechnologiesWallet] = totalSupply.mul(15).div(100); 
+        Transfer(0x0, cycledTechnologiesWallet, totalSupply);
+
+        //10% of the hard cap, reserve for founders
+        balances[foundersWallet] = totalSupply.mul(10).div(100); 
+        Transfer(0x0, foundersWallet, totalSupply);
+
+        //5% of the hard cap, reserve for bounty
+        balances[bountyWallet] = totalSupply.mul(5).div(100);  
+        Transfer(0x0, bountyWallet, totalSupply);
+
     }
 
-     /// @dev enable the token trading
-    function enableTrading() public onlyOwner {
-        tradingOpen = true;
-    }
-  
-    /// @dev disable the token trading
-    function disableTrading() public onlyOwner {
-        tradingOpen = false;
-    }
-
-    /// @dev Issue tokens for a single buyer on the presale
-    /// @param _beneficiary addresses that the presale tokens will be sent to.
-    /// @param _tokens the amount of tokens, with decimals expanded (full).
-    function issueTokens(address _beneficiary, uint256 _tokens) public onlyOwner inProgress {
-        require(_beneficiary != address(0));
-
-        // compute without actually increasing it
-        uint256 increasedTotalSupply = totalSupply.add(_tokens);
-        // roll back if hard cap reached
-        require(increasedTotalSupply <= HARD_CAP);
-
-        // increase token total supply
-        totalSupply = increasedTotalSupply;
-        
-        // update the beneficiary balance to number of tokens sent
-        balances[_beneficiary] = balances[_beneficiary].add(_tokens);
-        
-        // event for token transfer
-        Transfer(msg.sender, _beneficiary, _tokens);
-        // event is fired when tokens issued
-        Issue(issueIndex++, _beneficiary, _tokens);
-    }
-    
-    /// @dev Closes the sale, 
-    function close() public onlyOwner beforeEnd {
-        /// no more tokens can be issued after this line
-        tokenSaleClosed = true;
-        
-    }
-
-    /// Transfer limited by the tradingOpen modifier 
-    function transferFrom(address _from, address _to, uint256 _value) public returns (bool) {
-        require(tradingOpen);
-        return super.transferFrom(_from, _to, _value);
-    }
-
-    /// Transfer limited by the tradingOpen modifier 
-    function transfer(address _to, uint256 _value) public returns (bool) {
-        require(tradingOpen);
-        return super.transfer(_to, _value);
-    }
 }
