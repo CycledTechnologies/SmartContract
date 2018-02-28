@@ -197,6 +197,7 @@ contract TokenDistributor is Ownable {
     function endPreSale() public onlyOwner beforeEnd {
         require(preSaleRunning);
         preSaleRunning = false;
+        token.transferFrom(preSaleWallet, mainSaleWallet, preSaleHardCap.sub(tokenSold));
     }
 
     /// @dev end the main-sale.
