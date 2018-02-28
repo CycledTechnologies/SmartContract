@@ -25,6 +25,9 @@ contract TokenDistributor is Ownable {
     // Total Token Sold
     uint256 public tokenSold;
 
+    // Total Token Sold in preSale
+    uint256 public preSaletokenSold;
+
     // Total Wei raised
     uint256 public weiRaised = 0;
 
@@ -90,22 +93,14 @@ contract TokenDistributor is Ownable {
         token = CycledToken(_tokenAddress);
     }
     
-    ///Returns main sale cap including remaining balance from pre sale
-    function getMainSaleCap() internal view returns (uint256) {
-        require(!preSaleRunning);
-        uint256 preSaleRemainingTokens = preSaleHardCap.sub(tokenSold);
-        return mainSaleHardCap.add(preSaleRemainingTokens);
-    }
-    
     /*
     * @param _token the token that needs to be validated against what has been distributed and the tokens are in max cap
     */
     function validateTransfer(uint256 _token) internal view {
-        uint256 totalTokenSold = tokenSold;
         if (preSaleRunning) {
-            require(totalTokenSold.add(_token) <= preSaleHardCap);
+            require(_token <= preSaleHardCap);
         } else {
-            require(totalTokenSold.add(_token) <= (mainSaleHardCap + preSaleHardCap.sub(tokenSold))); 
+            require(_token <= (mainSaleHardCap + preSaleHardCap.sub(preSaletokenSold))); 
         }
     }
 
@@ -122,11 +117,10 @@ contract TokenDistributor is Ownable {
         //Compute number of tokens to transfer
         uint256 tokens = getTokenAfterDiscount(_investedWieAmount);
         
-        validateTransfer(tokens);
-
         // compute without actually increasing it
         uint256 increasedtokenSold = tokenSold.add(tokens);
-        
+         
+        validateTransfer(increasedtokenSold);
         
         // increase token total supply
         tokenSold = increasedtokenSold;
@@ -162,27 +156,7 @@ contract TokenDistributor is Ownable {
         }
     }
     
-    /// @dev Compute the amount of token that can be purchased.
-    /// @param _weiAmount Amount of Ether to purchase CYD.
-    /// @return Amount of token to purchase
-    function getTokenAmount(uint256 _weiAmount) internal view returns (uint256 tokens) {
-        uint256 tokenBase = _weiAmount.mul(baseRate);
-        uint8 discount = getDiscount();
-        tokens = tokenBase.mul(discount).div(100).add(tokenBase);
-    }
-
-    /// @dev Compute the discount.
-    /// @return discount percentage
-    function getDiscount() internal view returns (uint8) {
-        uint256 _tokenSold = tokenSold * 10**uint256(DECIMAL);
-        uint256 _amountFor30perDiscount = 75000000 * 10**uint256(DECIMAL);
-        if (_tokenSold >= _amountFor30perDiscount && preSaleRunning) 
-            return 30;
-        if (_tokenSold < _amountFor30perDiscount && preSaleRunning) 
-            return 50;
-        return 0;
-    }
-
+ 
     /// @dev Start the pre-sale.
     function startPreSale() public onlyOwner beforeEnd noActiveSale {
         preSaleRunning = true;
@@ -197,6 +171,7 @@ contract TokenDistributor is Ownable {
     function endPreSale() public onlyOwner beforeEnd {
         require(preSaleRunning);
         preSaleRunning = false;
+        preSaletokenSold = tokenSold;
         token.transferFrom(preSaleWallet, mainSaleWallet, preSaleHardCap.sub(tokenSold));
     }
 
