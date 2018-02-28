@@ -108,11 +108,10 @@ contract TokenDistributor is Ownable {
     /// @dev Issue tokens for a single buyer on the presale
     /// @param _beneficiary addresses that the presale tokens will be sent to.
     /// @param _investedWieAmount the amount to invest, with decimals expanded (full).
-    function issueTokens(address _beneficiary, uint256 _investedWieAmount) public beforeEnd {
+    function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner beforeEnd {
         require(_beneficiary != address(0));
         require(_investedWieAmount != 0);
         require(preSaleRunning || mainSaleRunning);
-        isMsgSenderAllowed();
            
         //Compute number of tokens to transfer
         uint256 tokens = getTokenAfterDiscount(_investedWieAmount);
