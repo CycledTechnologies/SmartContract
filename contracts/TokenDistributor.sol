@@ -127,10 +127,15 @@ contract TokenDistributor is Ownable {
         weiRaised = weiRaised.add(_investedWieAmount);
 
         //Assign the tokens to the _beneficiary
-        Transfer storage aT = assignedTokens[_beneficiary];
-        aT.tokens = tokens;
-        aT.transfered = false;
-        addresses.push(_beneficiary);
+        if (assignedTokens[_beneficiary].tokens > 0) {
+            assignedTokens[_beneficiary].tokens = assignedTokens[_beneficiary].tokens.add(tokens);
+        }
+        else {
+            Transfer storage aT = assignedTokens[_beneficiary];
+            aT.tokens = tokens;
+            aT.transfered = false;
+            addresses.push(_beneficiary);
+        }
         // event is fired when tokens assigned
         TokenAssigned(_beneficiary, tokens);
     }
