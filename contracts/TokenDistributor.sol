@@ -35,10 +35,10 @@ contract TokenDistributor is Ownable {
     uint8 private constant DECIMAL = 18;
     
     // Set the max limit for pre sale cap
-    uint256 preSaleHardCap = 200000000 * 10**uint256(DECIMAL);
+    uint256 public preSaleHardCap = 200000000 * 10**uint256(DECIMAL);
     
     //Set the min limit of main sale cap
-    uint256 mainSaleHardCap = 300000000 * 10**uint256(DECIMAL);
+    uint256 public mainSaleHardCap = 300000000 * 10**uint256(DECIMAL);
 
     /// no tokens can be ever issued when this is set to "true"
     bool public preSaleRunning = false;
@@ -100,7 +100,7 @@ contract TokenDistributor is Ownable {
         if (preSaleRunning) {
             require(_token <= preSaleHardCap);
         } else {
-            require(_token <= (mainSaleHardCap + preSaleHardCap.sub(preSaletokenSold))); 
+            require(_token <= mainSaleHardCap); 
         }
     }
 
@@ -169,9 +169,17 @@ contract TokenDistributor is Ownable {
     /// @dev Start the main-sale.
     function endPreSale() public onlyOwner beforeEnd {
         require(preSaleRunning);
+
         preSaleRunning = false;
+
+        ///setting presale tokensold
         preSaletokenSold = tokenSold;
+
+        ///tranfer remaining tokens to mainsale wallet
         token.transferFrom(preSaleWallet, mainSaleWallet, preSaleHardCap.sub(tokenSold));
+
+        ///Incresing hardcap of mainsale
+        mainSaleHardCap = mainSaleHardCap.add(preSaleHardCap.sub(tokenSold));
     }
 
     /// @dev end the main-sale.
