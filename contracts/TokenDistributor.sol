@@ -8,19 +8,11 @@ import "./CycledToken.sol";
 contract TokenDistributor is Ownable {
     using SafeMath for uint256;
 
-    struct Transfer {
-        uint256 tokens;
-        bool transfered;
-    }
-    mapping(address => Transfer) assignedTokens;
-
-    address[] addresses;
-
     // The token being sold
     CycledToken private token;
     
     // USe to set the base rate
-    uint256 private baseRate;
+    uint256 private baseRate = 25000;
 
     // Total Token Sold
     uint256 public tokenSold;
@@ -31,7 +23,6 @@ contract TokenDistributor is Ownable {
     // Total Wei raised
     uint256 public weiRaised = 0;
 
-    
     uint8 private constant DECIMAL = 18;
     
     // Set the max limit for pre sale cap
@@ -79,65 +70,54 @@ contract TokenDistributor is Ownable {
     * @param _tokenAddress of the token being sold
     */
     function TokenDistributor(
-        uint256 _rate, 
         address _tokenAddress, 
         address _preSaleWallet,
         address _mainSaleWallet) public {
 
-        require(_rate > 0);
         require(_tokenAddress != address(0));
+        require(_preSaleWallet != address(0));
+        require(_preSaleWallet != address(0));
 
-        baseRate = _rate;
         preSaleWallet = _preSaleWallet;
         mainSaleWallet = _mainSaleWallet;
         token = CycledToken(_tokenAddress);
     }
     
-    /*
-    * @param _token the token that needs to be validated against what has been distributed and the tokens are in max cap
-    */
-    function validateTransfer(uint256 _token) internal view {
-        if (preSaleRunning) {
-            require(_token <= preSaleHardCap);
-        } else {
-            require(_token <= mainSaleHardCap); 
-        }
-    }
 
-
-    /// @dev Issue tokens for a single buyer on the presale
-    /// @param _beneficiary addresses that the presale tokens will be sent to.
-    /// @param _investedWieAmount the amount to invest, with decimals expanded (full).
+    /// @dev issue tokens for a single buyer
+    /// @param _beneficiary addresses that the tokens will be sent to.
+    /// @param _tokens the amount of tokens, with decimals expanded (full).
     function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner beforeEnd {
+
         require(_beneficiary != address(0));
         require(_investedWieAmount != 0);
         require(preSaleRunning || mainSaleRunning);
-           
+        address wallet;
         //Compute number of tokens to transfer
         uint256 tokens = getTokenAfterDiscount(_investedWieAmount);
         
         // compute without actually increasing it
         uint256 increasedtokenSold = tokenSold.add(tokens);
          
-        validateTransfer(increasedtokenSold);
+        //Checking if presale is running or mainsale
+        if (preSaleRunning) {
+            wallet = preSaleWallet;
+            require(increasedtokenSold <= preSaleHardCap);
+        } else {
+            wallet = mainSaleWallet;
+            require(increasedtokenSold <= mainSaleHardCap); 
+        }
         
         // increase token total supply
         tokenSold = increasedtokenSold;
         //increase wie raised
         weiRaised = weiRaised.add(_investedWieAmount);
 
-        //Assign the tokens to the _beneficiary
-        if (assignedTokens[_beneficiary].tokens > 0) {
-            assignedTokens[_beneficiary].tokens = assignedTokens[_beneficiary].tokens.add(tokens);
-        }
-        else {
-            Transfer storage aT = assignedTokens[_beneficiary];
-            aT.tokens = tokens;
-            aT.transfered = false;
-            addresses.push(_beneficiary);
-        }
-        // event is fired when tokens assigned
-        TokenAssigned(_beneficiary, tokens);
+        token.transferFrom(wallet, _beneficiary, tokens);
+
+        // event is fired when tokens issued
+        Issue(issueIndex++, _beneficiary, tokens);
+
     }
 
     function isMsgSenderAllowed() internal view {
@@ -147,20 +127,7 @@ contract TokenDistributor is Ownable {
             require(msg.sender == mainSaleWallet);
     }
 
-
-    function dispatchTokens() public beforeEnd {
-        isMsgSenderAllowed();
-        require(issueIndex < addresses.length);
-        for (uint index = issueIndex; index < addresses.length; index++) {
-            if (!assignedTokens[addresses[index]].transfered) {
-                token.transferFrom(msg.sender, addresses[index], assignedTokens[addresses[index]].tokens);
-                assignedTokens[addresses[index]].transfered = true;
-                Issue(issueIndex++, addresses[index], assignedTokens[addresses[index]].tokens);
-            }
-        }
-    }
-    
- 
+     
     /// @dev Start the pre-sale.
     function startPreSale() public onlyOwner beforeEnd noActiveSale {
         preSaleRunning = true;
@@ -202,7 +169,7 @@ contract TokenDistributor is Ownable {
     * @param _weiAmount Ether amount from that the token price to be calculated with including discount
     * @dev returns token amount after applying the discount in pre sale
     */
-    function getTokenAfterDiscount(uint256 _weiAmount) internal view returns (uint256) {
+    function getTokenAfterDiscount(uint256 _weiAmount) public view returns (uint256) {
         uint256 fiftyPerDiscountedToken = 0;
         uint256 thirtyPerDiscountedToken = 0;
         uint256 _token = _weiAmount.mul(baseRate);
