@@ -66,7 +66,7 @@ contract TokenDistributor is Ownable {
     }
 
     /**
-    * @param _rate Number of token units a buyer gets per wei
+    *
     * @param _tokenAddress of the token being sold
     */
     function TokenDistributor(
@@ -86,7 +86,6 @@ contract TokenDistributor is Ownable {
 
     /// @dev issue tokens for a single buyer
     /// @param _beneficiary addresses that the tokens will be sent to.
-    /// @param _tokens the amount of tokens, with decimals expanded (full).
     function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner beforeEnd {
 
         require(_beneficiary != address(0));
