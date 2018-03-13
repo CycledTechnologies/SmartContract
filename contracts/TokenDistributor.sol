@@ -176,7 +176,7 @@ contract TokenDistributor is Ownable {
 
     /*
     * @param _weiAmount Ether amount from that the token price to be calculated with including discount
-    * @dev returns token amount after applying the discount in pre sale
+    * @return token amount after applying the discount
     */
     function getTokenAfterDiscount(uint256 _weiAmount) public view returns (uint256) {
         uint256 fiftyPerDiscountedToken = 0;
