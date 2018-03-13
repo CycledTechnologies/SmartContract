@@ -27,10 +27,10 @@ contract TokenDistributor is Ownable {
     uint256 private BASE_RATE = 25000;
 
     //pre sale cap
-    uint256 public preSaleHardCap = 200000000 * 10**uint256(DECIMAL);
+    uint256 public PRE_SALE_HARD_CAP = 200000000 * 10**uint256(DECIMAL);
     
     //main sale cap
-    uint256 public mainSaleHardCap = 300000000 * 10**uint256(DECIMAL);
+    uint256 public MAIN_SALE_HARD_CAP = 300000000 * 10**uint256(DECIMAL);
 
     /// no tokens can be ever issued when this is set to "true"
     bool public tokenSaleClosed = false;
@@ -134,9 +134,9 @@ contract TokenDistributor is Ownable {
 
         //Checking if presale is running or mainsale
         if (curSaleRound == 1) {
-            require(increasedtokenSold <= preSaleHardCap);
+            require(increasedtokenSold <= PRE_SALE_HARD_CAP);
         } else {
-            require(increasedtokenSold <= mainSaleHardCap.add(preSaleHardCap)); 
+            require(increasedtokenSold <= MAIN_SALE_HARD_CAP.add(PRE_SALE_HARD_CAP)); 
         }
         
         // increase token total supply
