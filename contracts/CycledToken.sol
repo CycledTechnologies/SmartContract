@@ -23,6 +23,7 @@ contract CycledToken is PausableToken, BurnableToken {
         address _bountyWallet
     ) public {
         totalSupply = HARD_CAP;
+        
         //20% of the hard cap, reserve for pre-sale
         balances[_preSaleWallet] = totalSupply.mul(20).div(100); 
         Transfer(0x0, _preSaleWallet, totalSupply.mul(20).div(100));
