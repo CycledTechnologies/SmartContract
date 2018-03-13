@@ -23,29 +23,30 @@ contract CycledToken is PausableToken, BurnableToken {
         address _bountyWallet
     ) public {
         totalSupply = HARD_CAP;
+        
         //20% of the hard cap, reserve for pre-sale
         balances[_preSaleWallet] = totalSupply.mul(20).div(100); 
-        Transfer(0x0, _preSaleWallet, totalSupply);
+        Transfer(0x0, _preSaleWallet, totalSupply.mul(20).div(100));
 
         //30% of the hard cap, reserve for pre-sale
         balances[_mainSaleWallet] = totalSupply.mul(30).div(100); 
-        Transfer(0x0, _mainSaleWallet, totalSupply);
+        Transfer(0x0, _mainSaleWallet, totalSupply.mul(30).div(100));
 
         //20% of the hard cap, reserve for recycling incentives 
         balances[_recyclingIncentivesWallet] = totalSupply.mul(20).div(100); 
-        Transfer(0x0, _recyclingIncentivesWallet, totalSupply);
+        Transfer(0x0, _recyclingIncentivesWallet, totalSupply.mul(20).div(100));
 
         //15% of the hard cap, reserve for cycled technologies
         balances[_cycledTechnologiesWallet] = totalSupply.mul(15).div(100); 
-        Transfer(0x0, _cycledTechnologiesWallet, totalSupply);
+        Transfer(0x0, _cycledTechnologiesWallet, totalSupply.mul(15).div(100));
 
         //10% of the hard cap, reserve for founders
         balances[_foundersWallet] = totalSupply.mul(10).div(100); 
-        Transfer(0x0, _foundersWallet, totalSupply);
+        Transfer(0x0, _foundersWallet, totalSupply.mul(10).div(100));
 
         //5% of the hard cap, reserve for bounty
         balances[_bountyWallet] = totalSupply.mul(5).div(100);  
-        Transfer(0x0, _bountyWallet, totalSupply);
+        Transfer(0x0, _bountyWallet, totalSupply.mul(5).div(100));
 
     }
 
