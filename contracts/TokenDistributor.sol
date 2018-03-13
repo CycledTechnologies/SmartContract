@@ -25,33 +25,32 @@ contract TokenDistributor is Ownable {
 
     uint8 private constant DECIMAL = 18;
     
-    // Set the max limit for pre sale cap
+    //pre sale cap
     uint256 public preSaleHardCap = 200000000 * 10**uint256(DECIMAL);
     
-    //Set the min limit of main sale cap
+    //main sale cap
     uint256 public mainSaleHardCap = 300000000 * 10**uint256(DECIMAL);
 
-    /// no tokens can be ever issued when this is set to "true"
+    /// is pre-sale is running or not
     bool public preSaleRunning = false;
 
-    /// no tokens can be ever issued when this is set to "true"
+    /// is main-sale is running or not
     bool public mainSaleRunning = false;
 
-     /// no tokens can be ever issued when this is set to "true"
+    /// no tokens can be ever issued when this is set to "true"
     bool public tokenSaleClosed = false;
 
     /// Issue event index starting from 0.
     uint64 public issueIndex = 0;
 
+    /// presale wallet address 
     address private preSaleWallet;
 
+    /// mainsale wallet address
     address private mainSaleWallet;
 
     /// Emitted for each sucuessful token purchase.
     event Issue(uint64 issueIndex, address addr, uint256 tokenAmount);
-
-    /// Emitted for each sucuessful token assigned.
-    event TokenAssigned(address addr, uint256 tokenAmount);
 
     /// Allow the closing to happen only once
     modifier beforeEnd {
@@ -65,10 +64,6 @@ contract TokenDistributor is Ownable {
         _;
     }
 
-    /**
-    *
-    * @param _tokenAddress of the token being sold
-    */
     function TokenDistributor(
         address _tokenAddress, 
         address _preSaleWallet,
@@ -76,7 +71,7 @@ contract TokenDistributor is Ownable {
 
         require(_tokenAddress != address(0));
         require(_preSaleWallet != address(0));
-        require(_preSaleWallet != address(0));
+        require(_mainSaleWallet != address(0));
 
         preSaleWallet = _preSaleWallet;
         mainSaleWallet = _mainSaleWallet;
@@ -84,8 +79,11 @@ contract TokenDistributor is Ownable {
     }
     
 
-    /// @dev issue tokens for a single buyer
-    /// @param _beneficiary addresses that the tokens will be sent to.
+    /* 
+    * @dev issue tokens to a single buyer
+    * @param _beneficiary address that the tokens will be sent to.
+    * @param _investedWieAmount amount to invest
+    */
     function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner beforeEnd {
 
         require(_beneficiary != address(0));
@@ -119,6 +117,9 @@ contract TokenDistributor is Ownable {
 
     }
 
+    /* 
+    * @dev check if msg sender is allowed to access method. 
+    */
     function isMsgSenderAllowed() internal view {
         if (preSaleRunning)
             require(msg.sender == preSaleWallet);
@@ -126,18 +127,23 @@ contract TokenDistributor is Ownable {
             require(msg.sender == mainSaleWallet);
     }
 
-     
-    /// @dev Start the pre-sale.
+    /* 
+    *  @dev Start pre-sale. 
+    */
     function startPreSale() public onlyOwner beforeEnd noActiveSale {
         preSaleRunning = true;
     }
 
-    /// @dev Start the main-sale.
+    /* 
+    *  @dev Start main-sale. 
+    */
     function startMainSale() public onlyOwner beforeEnd noActiveSale {
         mainSaleRunning = true;
     }
 
-    /// @dev Start the main-sale.
+    /* 
+    *  @dev end pre-sale. 
+    */
     function endPreSale() public onlyOwner beforeEnd {
         require(preSaleRunning);
 
@@ -152,14 +158,18 @@ contract TokenDistributor is Ownable {
         ///Incresing hardcap of mainsale
         mainSaleHardCap = mainSaleHardCap.add(preSaleHardCap.sub(tokenSold));
     }
-
-    /// @dev end the main-sale.
+    
+    /* 
+    *  @dev end main-sale.
+    */
     function endMainSale() public onlyOwner beforeEnd {
         require(mainSaleRunning);
         mainSaleRunning = false;
     }
 
-    /// @dev close the sale
+    /* 
+    * @dev close the sale
+    */
     function close() public onlyOwner beforeEnd {
         tokenSaleClosed = true;
     }
