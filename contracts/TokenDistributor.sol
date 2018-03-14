@@ -32,9 +32,6 @@ contract TokenDistributor is Ownable {
     //main sale cap
     uint256 public MAIN_SALE_HARD_CAP = 300000000 * 10**uint256(DECIMAL);
 
-    /// no tokens can be ever issued when this is set to "true"
-    bool public tokenSaleClosed = false;
-
     // Total Wei raised
     uint256 public weiRaised = 0;
 
@@ -59,12 +56,6 @@ contract TokenDistributor is Ownable {
 
     /// Emitted for each sucuessful token purchase.
     event Issue(uint64 issueIndex, address addr, uint256 tokenAmount);
-
-    /// Allow the closing to happen only once
-    modifier beforeEnd {
-        require(!tokenSaleClosed);
-        _;
-    }
 
     /**
     * @dev Reverts if not in crowdsale time range. 
