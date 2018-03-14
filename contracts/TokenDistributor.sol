@@ -93,6 +93,7 @@ contract TokenDistributor is Ownable {
         require(whitelist.isWhitelisted(_beneficiary));
         uint256 weiAmount = msg.value;
         doIssueTokens(_beneficiary, weiAmount);
+        owner.transfer(weiAmount);
     }
 
     function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner onlyWhileOpen {
@@ -180,4 +181,9 @@ contract TokenDistributor is Ownable {
         } 
         return 0;
     }
+
+    function forwardFunds() onlyOwner public {
+        address thisAddress = this;
+        owner.transfer(thisAddress.balance);
+  }
 }
