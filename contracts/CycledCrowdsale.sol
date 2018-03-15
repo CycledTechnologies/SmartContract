@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity 0.4.18;
 
 import "../node_modules/zeppelin-solidity/contracts/math/SafeMath.sol";
 import "../node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol";
@@ -18,12 +18,9 @@ contract CycledCrowdsale is Ownable {
     // Total Token Sold
     uint256 public tokenSold;
 
-    // Total Token Sold in preSale
-    uint256 public preSaletokenSold;
+    address private tokenWallet;
 
-    address tokenWallet;
-
-    address fundWallet;
+    address private fundWallet;
     
     // USe to set the base rate
     uint256 private BASE_RATE = 25000;
@@ -83,11 +80,21 @@ contract CycledCrowdsale is Ownable {
         buyTokens(msg.sender);
     }
 
+    /**
+    * @dev Validation of an incoming purchase. 
+    * @param _beneficiary Address performing the token purchase
+    * @param _weiAmount Value in wei involved in the purchase
+    */
+    function preValidateInvestment(address _beneficiary, uint256 _weiAmount) internal {
+        require(_beneficiary != address(0));
+        require(_weiAmount >= 0.05 ether);
+    }
+
         
     function buyTokens(address _beneficiary) public payable {
-        require(_beneficiary != address(0));
-        require(whitelist.isWhitelisted(_beneficiary));
         uint256 weiAmount = msg.value;
+        preValidateInvestment(_beneficiary, weiAmount);
+        require(whitelist.isWhitelisted(_beneficiary));
         doIssueTokens(_beneficiary, weiAmount);
         fundWallet.transfer(weiAmount);
     }
@@ -111,7 +118,6 @@ contract CycledCrowdsale is Ownable {
         return roundNum;
     }
 
-
     /* 
     * @dev issue tokens
     * @param _beneficiary address that the tokens will be sent to.
@@ -119,8 +125,7 @@ contract CycledCrowdsale is Ownable {
     */
     function doIssueTokens(address _beneficiary, uint256 _investedWieAmount) internal onlyWhileOpen {
 
-        require(_beneficiary != address(0));
-        require(_investedWieAmount != 0);
+        preValidateInvestment(_beneficiary, _investedWieAmount);
 
         //Compute number of tokens to transfer
         uint256 tokens = getTokenAfterDiscount(_investedWieAmount, tokenSold);
@@ -178,6 +183,10 @@ contract CycledCrowdsale is Ownable {
         return 0;
     }
 
+    /*
+    * @param _weiAmount Ether amount from that the token price to be calculated with including discount
+    * @return token amount after applying the discount
+    */
     function forwardFunds() onlyOwner public {
         address thisAddress = this;
         fundWallet.transfer(thisAddress.balance);
