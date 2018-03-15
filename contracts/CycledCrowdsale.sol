@@ -6,7 +6,7 @@ import "./CycledToken.sol";
 import "./Whitelist.sol";
 
 
-contract TokenDistributor is Ownable {
+contract CycledCrowdsale is Ownable {
     using SafeMath for uint256;
 
     // The token being sold
@@ -22,6 +22,8 @@ contract TokenDistributor is Ownable {
     uint256 public preSaletokenSold;
 
     address tokenWallet;
+
+    address fundWallet;
     
     // USe to set the base rate
     uint256 private BASE_RATE = 25000;
@@ -66,9 +68,12 @@ contract TokenDistributor is Ownable {
         _;
     }
 
-    function TokenDistributor(address _tokenAddress, address _whitelistAddress) public {
+    function CycledCrowdsale(address _tokenAddress, address _whitelistAddress, address _fundWallet) public {
         require(_tokenAddress != address(0));
+        require(_whitelistAddress != address(0));
+        require(_fundWallet != address(0));
         tokenWallet = msg.sender;
+        fundWallet = _fundWallet;
         token = CycledToken(_tokenAddress);
         whitelist = Whitelist(_whitelistAddress);
     }
@@ -84,7 +89,7 @@ contract TokenDistributor is Ownable {
         require(whitelist.isWhitelisted(_beneficiary));
         uint256 weiAmount = msg.value;
         doIssueTokens(_beneficiary, weiAmount);
-        owner.transfer(weiAmount);
+        fundWallet.transfer(weiAmount);
     }
 
     function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner onlyWhileOpen {
@@ -175,6 +180,6 @@ contract TokenDistributor is Ownable {
 
     function forwardFunds() onlyOwner public {
         address thisAddress = this;
-        owner.transfer(thisAddress.balance);
-  }
+        fundWallet.transfer(thisAddress.balance);
+    }
 }
