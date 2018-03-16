@@ -7,9 +7,10 @@ var FiltersSubprovider = require('web3-provider-engine/subproviders/filters.js')
 var Web3Subprovider = require("web3-provider-engine/subproviders/web3.js");
 var HDWalletProvider = require("truffle-hdwallet-provider");
 
-var mnemonic = "monster way diesel camera nephew giggle wrist beach measure raven seed antique";
+var mnemonic = "rather lawsuit shallow toilet pudding recipe genius sunny street utility lazy myself";
 var path = "m/44'/1'/0'/0/0";
-var provider_url = "https://rinkeby.infura.io/jkYJLm4yhJuFJqGAVvMe";
+//var provider_url = "https://rinkeby.infura.io/jkYJLm4yhJuFJqGAVvMe";
+var provider_url = "http://localhost:8545";
 
 var engine = new ProviderEngine();
 engine.addProvider(new TrezorProvider(path));
@@ -26,9 +27,9 @@ module.exports = {
       port: 8545,
       network_id: '*' // Match any network id
     },
-    metaMask: {
+    hDWallet: {
       network_id: 4,    
-      provider: new HDWalletProvider(mnemonic, provider_url, 6),// 
+      provider: new HDWalletProvider(mnemonic, provider_url, 0),// 
     },
     trezor: {
       network_id: 4,    

@@ -35,6 +35,8 @@
     "webpack-dev-server": "^2.3.0"
   },
   "dependencies": {
+    "@daonomic/trezor-wallet-provider": "0.0.4",
+    "truffle-hdwallet-provider": "0.0.3",
     "zeppelin-solidity": "^1.5.0"
   }
 }
