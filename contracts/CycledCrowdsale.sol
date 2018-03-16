@@ -40,16 +40,16 @@ contract CycledCrowdsale is Ownable {
     uint8 public issueIndex = 0;
 
 
-    /// pre-sale start time; Is equivalent to: 01/05/2018 @ 12:00am (UTC) ; Round 1
-    uint64 private constant date01May2018 = 1525132800;
+    /// pre-sale start time; Is equivalent to: Tue, 01 May 2018 @ 1:00pm (UTC) ; Round 1
+    uint64 private constant date01May2018 = 1525179600;
 
-    /// pre-sale end time; Is equivalent to: 28/05/2018 @ 11:59pm (UTC)  ; Round 1
-    uint64 private constant date28May2018 = 1527551940;
+    /// pre-sale end time; Is equivalent to: Thu, 31 May 2018 @ 11:59pm (UTC) ; Round 1
+    uint64 private constant date31May2018 = 1527811140;
 
-    /// main-sale start time; Is equivalent to: 13/08/2018 @ 12:00am (UTC) ; Round 2
-    uint64 private constant date13Aug2018 = 1534118400;
+    /// main-sale start time; Is equivalent to: Mon, 13 Aug 2018 @ 1:00pm (UTC) ; Round 2
+    uint64 private constant date13Aug2018 = 1534165200;
 
-    /// main-sale end time; Is equivalent to: 07/09/2018 @ 11:59pm (UTC)  ; Round 2
+    /// main-sale end time; Is equivalent to: Fri, 07 Sep 2018 @ 11:59pm (UTC)  ; Round 2
     uint64 private constant date7Sep2018 = 1536364740;
 
 
@@ -61,7 +61,7 @@ contract CycledCrowdsale is Ownable {
     */
     modifier onlyWhileOpen {
         uint64 _now = uint64(block.timestamp);
-        require( (_now >= date01May2018 && _now <= date28May2018) || 
+        require( (_now >= date01May2018 && _now <= date31May2018) || 
                     (_now >= date13Aug2018 && _now <= date7Sep2018) );
         _;
     }
@@ -84,7 +84,7 @@ contract CycledCrowdsale is Ownable {
     /**
     * @dev Validation of an incoming purchase. 
     * @param _beneficiary Address performing the token purchase
-    * @param _weiAmount Value in wei involved in the purchase
+    * @param _weiAmount Value involved in the purchase
     */
     function preValidateInvestment(address _beneficiary, uint256 _weiAmount) internal {
         require(_beneficiary != address(0));
@@ -112,7 +112,7 @@ contract CycledCrowdsale is Ownable {
     function currentSale() internal view onlyWhileOpen returns (uint8) {
         uint8 roundNum = 0;
         uint64 _now = uint64(block.timestamp);
-        if (_now >= date01May2018 && _now <= date28May2018) 
+        if (_now >= date01May2018 && _now <= date31May2018) 
             roundNum = 1;// Pre-Sale round
         else if (_now >= date13Aug2018 && _now <= date7Sep2018) 
             roundNum = 2;// Main-Sale round
