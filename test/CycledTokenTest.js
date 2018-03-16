@@ -4,7 +4,6 @@ var CycledToken = artifacts.require("./CycledToken.sol");
 contract('CycledToken', function ([owner, acc]) {
   let token;
   let ownerTokenBalance;
-  let amount = 100;
   let recyclingIncentivesWallet = "0x41407962c3a18edbcaa98a5cc071433111b66ccc";
   let cycledTechnologiesWallet = "0xfb51ebe7b377f11d5d38112979ed7ffd27cc26fc";
   let foundersWallet = "0xa9207175a2a8425db5c496e120b2ec28ba0a39e4";

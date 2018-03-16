@@ -60,8 +60,9 @@ contract CycledCrowdsale is Ownable {
     * @dev Reverts if not in crowdsale time range. 
     */
     modifier onlyWhileOpen {
-        require( (now >= date01May2018 && now <= date28May2018) || 
-                    (now >= date13Aug2018 && now <= date7Sep2018) );
+        uint64 _now = uint64(block.timestamp);
+        require( (_now >= date01May2018 && _now <= date28May2018) || 
+                    (_now >= date13Aug2018 && _now <= date7Sep2018) );
         _;
     }
 
@@ -110,9 +111,10 @@ contract CycledCrowdsale is Ownable {
     */
     function currentSale() internal view onlyWhileOpen returns (uint8) {
         uint8 roundNum = 0;
-        if (now >= date01May2018 && now <= date28May2018) 
+        uint64 _now = uint64(block.timestamp);
+        if (_now >= date01May2018 && _now <= date28May2018) 
             roundNum = 1;// Pre-Sale round
-        else if (now >= date13Aug2018 && now <= date7Sep2018) 
+        else if (_now >= date13Aug2018 && _now <= date7Sep2018) 
             roundNum = 2;// Main-Sale round
      
         return roundNum;
