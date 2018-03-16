@@ -1,4 +1,6 @@
-require('babel-register')
+require('dotenv').load();
+require('babel-register');
+require('babel-polyfill');
 
 var Web3 = require("web3");
 var TrezorProvider = require("@daonomic/trezor-wallet-provider");
@@ -7,7 +9,7 @@ var FiltersSubprovider = require('web3-provider-engine/subproviders/filters.js')
 var Web3Subprovider = require("web3-provider-engine/subproviders/web3.js");
 var HDWalletProvider = require("truffle-hdwallet-provider");
 
-var mnemonic = "rather lawsuit shallow toilet pudding recipe genius sunny street utility lazy myself";
+var mnemonic = "oil prefer pole pottery ginger stem blood hold profit inject giraffe echo";
 var path = "m/44'/1'/0'/0/0";
 //var provider_url = "https://rinkeby.infura.io/jkYJLm4yhJuFJqGAVvMe";
 var provider_url = "http://localhost:8545";
