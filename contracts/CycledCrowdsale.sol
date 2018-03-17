@@ -37,7 +37,7 @@ contract CycledCrowdsale is Ownable {
     uint8 private constant DECIMAL = 18;
 
     /// Issue event index starting from 0.
-    uint8 public issueIndex = 0;
+    uint64 public issuedIndex = 0;
 
 
     /// pre-sale start time; Is equivalent to: Tue, 01 May 2018 @ 1:00pm (UTC) ; Round 1
@@ -151,7 +151,7 @@ contract CycledCrowdsale is Ownable {
         token.transferFrom(tokenWallet, _beneficiary, tokens);
 
         // event is fired when tokens issued
-        Issue(issueIndex++, _beneficiary, tokens);
+        Issue(issuedIndex++, _beneficiary, tokens);
 
     }
 
