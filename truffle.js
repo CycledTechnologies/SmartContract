@@ -12,7 +12,7 @@ var HDWalletProvider = require("truffle-hdwallet-provider");
 var mnemonic = "oil prefer pole pottery ginger stem blood hold profit inject giraffe echo";
 var path = "m/44'/1'/0'/0/0";
 //var provider_url = "https://rinkeby.infura.io/jkYJLm4yhJuFJqGAVvMe";
-var provider_url = "http://localhost:8545";
+var provider_url = "http://127.0.0.1:8545";
 
 var engine = new ProviderEngine();
 engine.addProvider(new TrezorProvider(path));
