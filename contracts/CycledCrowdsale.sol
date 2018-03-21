@@ -12,7 +12,7 @@ contract CycledCrowdsale is Ownable {
     // The token being sold
     CycledToken private token;
 
-    // The token being sold
+    // whitelist contract 
     Whitelist private whitelist;
 
     // Total Token Sold
@@ -166,6 +166,7 @@ contract CycledCrowdsale is Ownable {
 
    /*
     * @param _weiAmount Ether amount from that the token price to be calculated with including discount
+    * @param _totalTokenSold Total token sold so far
     * @return token amount after applying the discount
     */
     function getTokenAfterDiscount(uint256 _weiAmount, uint256 _totalTokenSold) public view returns (uint256) {
