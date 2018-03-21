@@ -21,6 +21,8 @@ contract CycledCrowdsale is Ownable {
     address private tokenWallet;
 
     address private fundWallet;
+
+    bool public halted;
     
     // USe to set the base rate
     uint256 private BASE_RATE = 25000;
@@ -66,6 +68,14 @@ contract CycledCrowdsale is Ownable {
         _;
     }
 
+    /**
+    * @dev Reverts if halted 
+    */
+    modifier stopInEmergency {
+      require(!halted);
+      _;
+    }
+
     function CycledCrowdsale(address _tokenAddress, address _whitelistAddress, address _fundWallet) public {
         require(_tokenAddress != address(0));
         require(_whitelistAddress != address(0));
@@ -95,7 +105,7 @@ contract CycledCrowdsale is Ownable {
     * @dev (fallback)tranfer tokens to beneficiary as per its investment.
     * @param _beneficiary to which token must transfer
     */
-    function buyTokens(address _beneficiary) public payable {
+    function buyTokens(address _beneficiary) public stopInEmergency payable {
         uint256 weiAmount = msg.value;
         preValidateInvestment(_beneficiary, weiAmount);
         require(whitelist.isWhitelisted(_beneficiary));
@@ -109,7 +119,7 @@ contract CycledCrowdsale is Ownable {
     * @param _beneficiary to which tranfer token
     * @param _investedWieAmount investment amount by the beneficiary
     */
-    function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner onlyWhileOpen {
+    function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner stopInEmergency onlyWhileOpen {
        doIssueTokens(_beneficiary, _investedWieAmount);
     }
 
@@ -201,6 +211,18 @@ contract CycledCrowdsale is Ownable {
     function forwardFunds() onlyOwner public {
         address thisAddress = this;
         fundWallet.transfer(thisAddress.balance);
+    }
+
+    // called by the owner on emergency, triggers stopped state
+    function halt() external onlyOwner {
+        require(halted != true);
+        halted = true;
+    }
+
+    // called by the owner on end of emergency, returns to normal state
+    function unhalt() external onlyOwner {
+        require(halted);
+        halted = false;
     }
 
 
