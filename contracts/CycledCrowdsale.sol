@@ -91,7 +91,10 @@ contract CycledCrowdsale is Ownable {
         require(_weiAmount >= 0.05 ether);
     }
 
-        
+    /* 
+    * @dev (fallback)tranfer tokens to beneficiary as per its investment.
+    * @param _beneficiary to which token must transfer
+    */
     function buyTokens(address _beneficiary) public payable {
         uint256 weiAmount = msg.value;
         preValidateInvestment(_beneficiary, weiAmount);
@@ -100,6 +103,12 @@ contract CycledCrowdsale is Ownable {
         fundWallet.transfer(weiAmount);
     }
 
+        
+    /* 
+    * @dev tranfer tokens to beneficiary as per its investment.
+    * @param _beneficiary to which tranfer token
+    * @param _investedWieAmount investment amount by the beneficiary
+    */
     function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner onlyWhileOpen {
        doIssueTokens(_beneficiary, _investedWieAmount);
     }
@@ -186,11 +195,12 @@ contract CycledCrowdsale is Ownable {
     }
 
     /*
-    * @param _weiAmount Ether amount from that the token price to be calculated with including discount
-    * @return token amount after applying the discount
+    * @dev forward funds to fundwallet if any stuck in contract 
     */
     function forwardFunds() onlyOwner public {
         address thisAddress = this;
         fundWallet.transfer(thisAddress.balance);
     }
+
+
 }
