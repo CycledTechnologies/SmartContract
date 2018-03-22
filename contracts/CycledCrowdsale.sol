@@ -20,8 +20,10 @@ contract CycledCrowdsale is Ownable {
 
     address private tokenWallet;
 
+    //Wallet where store funds 
     address private fundWallet;
 
+    //use to halt the sale
     bool public halted;
     
     // USe to set the base rate
@@ -91,15 +93,7 @@ contract CycledCrowdsale is Ownable {
         buyTokens(msg.sender);
     }
 
-    /**
-    * @dev Validation of an incoming purchase. 
-    * @param _beneficiary Address performing the token purchase
-    * @param _weiAmount Value involved in the purchase
-    */
-    function preValidateInvestment(address _beneficiary, uint256 _weiAmount) internal {
-        require(_beneficiary != address(0));
-        require(_weiAmount >= 0.05 ether);
-    }
+
 
     /* 
     * @dev (fallback)tranfer tokens to beneficiary as per its investment.
@@ -107,7 +101,6 @@ contract CycledCrowdsale is Ownable {
     */
     function buyTokens(address _beneficiary) public stopInEmergency payable {
         uint256 weiAmount = msg.value;
-        preValidateInvestment(_beneficiary, weiAmount);
         require(whitelist.isWhitelisted(_beneficiary));
         doIssueTokens(_beneficiary, weiAmount);
         fundWallet.transfer(weiAmount);
@@ -146,7 +139,8 @@ contract CycledCrowdsale is Ownable {
     */
     function doIssueTokens(address _beneficiary, uint256 _investedWieAmount) internal onlyWhileOpen {
 
-        preValidateInvestment(_beneficiary, _investedWieAmount);
+        require(_beneficiary != address(0));
+        require(_investedWieAmount >= 0.05 ether);
 
         //Compute number of tokens to transfer
         uint256 tokens = getTokenAfterDiscount(_investedWieAmount, tokenSold);
