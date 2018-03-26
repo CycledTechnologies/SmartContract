@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity 0.4.19;
 
 import "../node_modules/zeppelin-solidity/contracts/token/PausableToken.sol";
 import "../node_modules/zeppelin-solidity/contracts/token/BurnableToken.sol";
@@ -15,8 +15,6 @@ contract CycledToken is PausableToken, BurnableToken {
     uint256 public constant HARD_CAP = 1000000000 * 10**uint256(decimals);
     
     function CycledToken(
-        address _preSaleWallet,
-        address _mainSaleWallet,
         address _recyclingIncentivesWallet,
         address _cycledTechnologiesWallet,
         address _foundersWallet,
@@ -25,12 +23,8 @@ contract CycledToken is PausableToken, BurnableToken {
         totalSupply = HARD_CAP;
         
         //20% of the hard cap, reserve for pre-sale
-        balances[_preSaleWallet] = totalSupply.mul(20).div(100); 
-        Transfer(0x0, _preSaleWallet, totalSupply.mul(20).div(100));
-
-        //30% of the hard cap, reserve for pre-sale
-        balances[_mainSaleWallet] = totalSupply.mul(30).div(100); 
-        Transfer(0x0, _mainSaleWallet, totalSupply.mul(30).div(100));
+        balances[msg.sender] = totalSupply.mul(50).div(100); 
+        Transfer(0x0, msg.sender, totalSupply.mul(50).div(100));
 
         //20% of the hard cap, reserve for recycling incentives 
         balances[_recyclingIncentivesWallet] = totalSupply.mul(20).div(100); 
