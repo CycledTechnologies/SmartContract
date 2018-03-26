@@ -132,6 +132,16 @@ contract CycledCrowdsale is Ownable {
         return roundNum;
     }
 
+
+    function currentSaleCap() internal view onlyWhileOpen returns (uint256 cap) {
+        uint64 _now = uint64(block.timestamp);
+        if (_now >= date01May2018 && _now <= date31May2018) 
+            cap = PRE_SALE_HARD_CAP;// Pre-Sale round
+        else if (_now >= date13Aug2018 && _now <= date7Sep2018) 
+            cap = MAIN_SALE_HARD_CAP.add(PRE_SALE_HARD_CAP);// Main-Sale round
+    }
+
+
     /* 
     * @dev issue tokens
     * @param _beneficiary address that the tokens will be sent to.
@@ -141,23 +151,26 @@ contract CycledCrowdsale is Ownable {
 
         require(_beneficiary != address(0));
         require(_investedWieAmount >= 0.05 ether);
+        
+        uint256 _currentSaleCap = currentSaleCap();
+        require(tokenSold != _currentSaleCap);
 
         //Compute number of tokens to transfer
         uint256 tokens = getTokenAfterDiscount(_investedWieAmount, tokenSold);
         
         // compute without actually increasing it
         uint256 increasedtokenSold = tokenSold.add(tokens);
-        uint8 curSaleRound = currentSale();
+     
 
-        //Checking if presale is running or mainsale
-        if (curSaleRound == 1) {
-            require(increasedtokenSold <= PRE_SALE_HARD_CAP);
-        } else {
-            require(increasedtokenSold <= MAIN_SALE_HARD_CAP.add(PRE_SALE_HARD_CAP)); 
+        if (increasedtokenSold > _currentSaleCap){
+            tokens = _currentSaleCap.sub(tokenSold);
+            increasedtokenSold = tokenSold.add(tokens);
+            _investedWieAmount = getTokenPriceAfterDiscount(tokens, tokenSold);
         }
         
         // increase token total supply
         tokenSold = increasedtokenSold;
+
         //increase wie raised
         weiRaised = weiRaised.add(_investedWieAmount);
 
@@ -199,6 +212,38 @@ contract CycledCrowdsale is Ownable {
         return 0;
     }
 
+
+    /*
+    * @param _tokenAmount Token amount from that the token price to be calculated with including discount
+    * @param _totalTokenSold Total token sold so far
+    * @return ether amount after applying the discount
+    */
+    function getTokenPriceAfterDiscount(uint256 _tokenAmount, uint256 _totalTokenSold) public view returns (uint256) {
+        
+        uint256 round = currentSale();        
+        uint256 maxTokenForMaxDiscount = (75000000 * 10**uint256(18));
+        
+        // No discount
+        if (round == 2) {
+            return _tokenAmount.div(BASE_RATE);
+        } 
+        // Pre-Sale discount
+        else if (round == 1) {
+            if(_totalTokenSold >= maxTokenForMaxDiscount) {
+                return _tokenAmount.div(BASE_RATE).div(100).mul(70);
+            } else {
+                uint256 maxDiscountedTokens = maxTokenForMaxDiscount.sub(_totalTokenSold);
+                if (maxDiscountedTokens >= _tokenAmount.div(BASE_RATE).div(100).mul(50)) {
+                    return _tokenAmount.div(BASE_RATE).div(100).mul(50);
+                } else {
+                    uint256 maxDiscounteTokenPrice = maxDiscountedTokens.mul(50).div(BASE_RATE.mul(100));
+                    return maxDiscountedTokens.sub((_tokenAmount.add(maxDiscounteTokenPrice)).div(BASE_RATE).div(100).mul(70));
+                }
+            }
+        } 
+        return 0;
+    }
+
     /*
     * @dev forward funds to fundwallet if any stuck in contract 
     */
@@ -218,6 +263,4 @@ contract CycledCrowdsale is Ownable {
         require(halted);
         halted = false;
     }
-
-
 }
