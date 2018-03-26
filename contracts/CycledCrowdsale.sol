@@ -73,7 +73,7 @@ contract CycledCrowdsale is Ownable {
     /**
     * @dev Reverts if halted 
     */
-    modifier stopInEmergency {
+    modifier stopIfHalted {
       require(!halted);
       _;
     }
@@ -99,7 +99,7 @@ contract CycledCrowdsale is Ownable {
     * @dev (fallback)tranfer tokens to beneficiary as per its investment.
     * @param _beneficiary to which token must transfer
     */
-    function buyTokens(address _beneficiary) public stopInEmergency payable {
+    function buyTokens(address _beneficiary) public stopIfHalted payable {
         uint256 weiAmount = msg.value;
         require(whitelist.isWhitelisted(_beneficiary));
         doIssueTokens(_beneficiary, weiAmount);
@@ -112,7 +112,7 @@ contract CycledCrowdsale is Ownable {
     * @param _beneficiary to which tranfer token
     * @param _investedWieAmount investment amount by the beneficiary
     */
-    function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner stopInEmergency onlyWhileOpen {
+    function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner stopIfHalted onlyWhileOpen {
        doIssueTokens(_beneficiary, _investedWieAmount);
     }
 
@@ -153,7 +153,7 @@ contract CycledCrowdsale is Ownable {
         require(_investedWieAmount >= 0.05 ether);
         
         uint256 _currentSaleCap = currentSaleCap();
-        require(tokenSold != _currentSaleCap);
+        require(tokenSold < _currentSaleCap);
 
         //Compute number of tokens to transfer
         uint256 tokens = getTokenAfterDiscount(_investedWieAmount, tokenSold);
