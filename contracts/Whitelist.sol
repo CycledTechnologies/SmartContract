@@ -23,6 +23,7 @@ contract Whitelist is Ownable {
 
 
     function isWhitelisted(address investor) constant external returns (bool result) {
+        require(investor != address(0));
         return whitelist[investor];
     }
 

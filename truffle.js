@@ -12,7 +12,7 @@ var HDWalletProvider = require("truffle-hdwallet-provider");
 //var mnemonic = "oil prefer pole pottery ginger stem blood hold profit inject giraffe echo";
 var mnemonic = "parent panda tide old utility doctor engine endorse stadium nothing slender that tornado gas pulp radio area need high caught message upon note catalog";
 
-var path = "m/44'/1'/0'/0";
+var path = "m/44'/60'/0'/0";
 var provider_url = "https://rinkeby.infura.io/jkYJLm4yhJuFJqGAVvMe";
 //var provider_url = "http://127.0.0.1:8545";
 
