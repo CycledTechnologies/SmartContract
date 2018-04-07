@@ -1,4 +1,4 @@
-pragma solidity 0.4.19;
+pragma solidity 0.4.21;
 
 import "../node_modules/zeppelin-solidity/contracts/math/SafeMath.sol";
 import "../node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol";
@@ -177,7 +177,7 @@ contract CycledCrowdsale is Ownable {
         token.transferFrom(tokenWallet, _beneficiary, tokens);
 
         // event is fired when tokens issued
-        Issue(issuedIndex++, _beneficiary, tokens);
+        emit Issue(issuedIndex++, _beneficiary, tokens);
 
     }
 

@@ -2,7 +2,7 @@ var CycledToken = artifacts.require("./CycledToken.sol");
 var CycledCrowdsale = artifacts.require("./CycledCrowdsale.sol");
 var Whitelist = artifacts.require("./Whitelist.sol");
 
-module.exports = function (deployer) {
+module.exports = function (deployer, network, addresses) {
   const rate = new web3.BigNumber(25000);
   const saleTokens = new web3.BigNumber(web3.toWei("500000000", "ether"));
 
