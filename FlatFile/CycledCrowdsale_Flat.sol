@@ -1,4 +1,4 @@
-pragma solidity 0.4.21;
+pragma solidity 0.4.19;
 
 
 /**
@@ -51,7 +51,7 @@ contract Ownable {
    */
   function transferOwnership(address newOwner) public onlyOwner {
     require(newOwner != address(0));
-    emit OwnershipTransferred(owner, newOwner);
+    OwnershipTransferred(owner, newOwner);
     owner = newOwner;
   }
 
@@ -120,41 +120,7 @@ contract ERC20 is ERC20Basic {
   event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-/**
- * @title Basic token
- * @dev Basic version of StandardToken, with no allowances.
- */
-contract BasicToken is ERC20Basic {
-  using SafeMath for uint256;
 
-  mapping(address => uint256) balances;
-
-  /**
-  * @dev transfer token for a specified address
-  * @param _to The address to transfer to.
-  * @param _value The amount to be transferred.
-  */
-  function transfer(address _to, uint256 _value) public returns (bool) {
-    require(_to != address(0));
-    require(_value <= balances[msg.sender]);
-
-    // SafeMath.sub will throw if there is not enough balance.
-    balances[msg.sender] = balances[msg.sender].sub(_value);
-    balances[_to] = balances[_to].add(_value);
-    emit Transfer(msg.sender, _to, _value);
-    return true;
-  }
-
-  /**
-  * @dev Gets the balance of the specified address.
-  * @param _owner The address to query the the balance of.
-  * @return An uint256 representing the amount owned by the passed address.
-  */
-  function balanceOf(address _owner) public view returns (uint256 balance) {
-    return balances[_owner];
-  }
-
-}
 
 /**
  * @title Standard ERC20 token
@@ -182,7 +148,7 @@ contract StandardToken is ERC20, BasicToken {
     balances[_from] = balances[_from].sub(_value);
     balances[_to] = balances[_to].add(_value);
     allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);
-    emit Transfer(_from, _to, _value);
+    Transfer(_from, _to, _value);
     return true;
   }
 
@@ -198,7 +164,7 @@ contract StandardToken is ERC20, BasicToken {
    */
   function approve(address _spender, uint256 _value) public returns (bool) {
     allowed[msg.sender][_spender] = _value;
-    emit Approval(msg.sender, _spender, _value);
+    Approval(msg.sender, _spender, _value);
     return true;
   }
 
@@ -224,7 +190,7 @@ contract StandardToken is ERC20, BasicToken {
    */
   function increaseApproval(address _spender, uint _addedValue) public returns (bool) {
     allowed[msg.sender][_spender] = allowed[msg.sender][_spender].add(_addedValue);
-    emit Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
+    Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
     return true;
   }
 
@@ -245,7 +211,7 @@ contract StandardToken is ERC20, BasicToken {
     } else {
       allowed[msg.sender][_spender] = oldValue.sub(_subtractedValue);
     }
-    emit Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
+    Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
     return true;
   }
 
@@ -289,7 +255,7 @@ contract Pausable is Ownable {
    */
   function pause() onlyOwner whenNotPaused public {
     paused = true;
-    emit Pause();
+    Pause();
   }
 
   /**
@@ -297,7 +263,7 @@ contract Pausable is Ownable {
    */
   function unpause() onlyOwner whenPaused public {
     paused = false;
-    emit Unpause();
+    Unpause();
   }
 }
 
@@ -340,7 +306,41 @@ contract PausableToken is StandardToken, Pausable {
 
 
 
+/**
+ * @title Basic token
+ * @dev Basic version of StandardToken, with no allowances.
+ */
+contract BasicToken is ERC20Basic {
+  using SafeMath for uint256;
 
+  mapping(address => uint256) balances;
+
+  /**
+  * @dev transfer token for a specified address
+  * @param _to The address to transfer to.
+  * @param _value The amount to be transferred.
+  */
+  function transfer(address _to, uint256 _value) public returns (bool) {
+    require(_to != address(0));
+    require(_value <= balances[msg.sender]);
+
+    // SafeMath.sub will throw if there is not enough balance.
+    balances[msg.sender] = balances[msg.sender].sub(_value);
+    balances[_to] = balances[_to].add(_value);
+    Transfer(msg.sender, _to, _value);
+    return true;
+  }
+
+  /**
+  * @dev Gets the balance of the specified address.
+  * @param _owner The address to query the the balance of.
+  * @return An uint256 representing the amount owned by the passed address.
+  */
+  function balanceOf(address _owner) public view returns (uint256 balance) {
+    return balances[_owner];
+  }
+
+}
 
 
 /**
@@ -363,7 +363,7 @@ contract BurnableToken is BasicToken {
         address burner = msg.sender;
         balances[burner] = balances[burner].sub(_value);
         totalSupply = totalSupply.sub(_value);
-        emit Burn(burner, _value);
+        Burn(burner, _value);
     }
 }
 
@@ -385,27 +385,32 @@ contract CycledToken is PausableToken, BurnableToken {
         address _foundersWallet,
         address _bountyWallet
     ) public {
+        require(_recyclingIncentivesWallet != address(0));
+        require(_cycledTechnologiesWallet != address(0));
+        require(_foundersWallet != address(0));
+        require(_bountyWallet != address(0));
+
         totalSupply = HARD_CAP;
         
         //20% of the hard cap, reserve for pre-sale
         balances[msg.sender] = totalSupply.mul(50).div(100); 
-        emit Transfer(0x0, msg.sender, totalSupply.mul(50).div(100));
+        Transfer(0x0, msg.sender, totalSupply.mul(50).div(100));
 
         //20% of the hard cap, reserve for recycling incentives 
         balances[_recyclingIncentivesWallet] = totalSupply.mul(20).div(100); 
-        emit Transfer(0x0, _recyclingIncentivesWallet, totalSupply.mul(20).div(100));
+        Transfer(0x0, _recyclingIncentivesWallet, totalSupply.mul(20).div(100));
 
         //15% of the hard cap, reserve for cycled technologies
         balances[_cycledTechnologiesWallet] = totalSupply.mul(15).div(100); 
-        emit Transfer(0x0, _cycledTechnologiesWallet, totalSupply.mul(15).div(100));
+        Transfer(0x0, _cycledTechnologiesWallet, totalSupply.mul(15).div(100));
 
         //10% of the hard cap, reserve for founders
         balances[_foundersWallet] = totalSupply.mul(10).div(100); 
-        emit Transfer(0x0, _foundersWallet, totalSupply.mul(10).div(100));
+        Transfer(0x0, _foundersWallet, totalSupply.mul(10).div(100));
 
         //5% of the hard cap, reserve for bounty
         balances[_bountyWallet] = totalSupply.mul(5).div(100);  
-        emit Transfer(0x0, _bountyWallet, totalSupply.mul(5).div(100));
+        Transfer(0x0, _bountyWallet, totalSupply.mul(5).div(100));
 
     }
 
@@ -435,10 +440,12 @@ contract Whitelist is Ownable {
 
 
     function isWhitelisted(address investor) constant external returns (bool result) {
+        require(investor != address(0));
         return whitelist[investor];
     }
 
 }
+
 
 contract CycledCrowdsale is Ownable {
     using SafeMath for uint256;
@@ -446,7 +453,7 @@ contract CycledCrowdsale is Ownable {
     // The token being sold
     CycledToken private token;
 
-    // The token being sold
+    // whitelist contract 
     Whitelist private whitelist;
 
     // Total Token Sold
@@ -454,7 +461,11 @@ contract CycledCrowdsale is Ownable {
 
     address private tokenWallet;
 
+    //Wallet where store funds 
     address private fundWallet;
+
+    //use to halt the sale
+    bool public halted;
     
     // USe to set the base rate
     uint256 private BASE_RATE = 25000;
@@ -500,6 +511,14 @@ contract CycledCrowdsale is Ownable {
         _;
     }
 
+    /**
+    * @dev Reverts if halted 
+    */
+    modifier stopIfHalted {
+      require(!halted);
+      _;
+    }
+
     function CycledCrowdsale(address _tokenAddress, address _whitelistAddress, address _fundWallet) public {
         require(_tokenAddress != address(0));
         require(_whitelistAddress != address(0));
@@ -515,26 +534,26 @@ contract CycledCrowdsale is Ownable {
         buyTokens(msg.sender);
     }
 
-    /**
-    * @dev Validation of an incoming purchase. 
-    * @param _beneficiary Address performing the token purchase
-    * @param _weiAmount Value involved in the purchase
-    */
-    function preValidateInvestment(address _beneficiary, uint256 _weiAmount) internal {
-        require(_beneficiary != address(0));
-        require(_weiAmount >= 0.05 ether);
-    }
 
-        
-    function buyTokens(address _beneficiary) public payable {
+
+    /* 
+    * @dev (fallback)tranfer tokens to beneficiary as per its investment.
+    * @param _beneficiary to which token must transfer
+    */
+    function buyTokens(address _beneficiary) public stopIfHalted payable {
         uint256 weiAmount = msg.value;
-        preValidateInvestment(_beneficiary, weiAmount);
         require(whitelist.isWhitelisted(_beneficiary));
         doIssueTokens(_beneficiary, weiAmount);
         fundWallet.transfer(weiAmount);
     }
 
-    function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner onlyWhileOpen {
+        
+    /* 
+    * @dev tranfer tokens to beneficiary as per its investment.
+    * @param _beneficiary to which tranfer token
+    * @param _investedWieAmount investment amount by the beneficiary
+    */
+    function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner stopIfHalted onlyWhileOpen {
        doIssueTokens(_beneficiary, _investedWieAmount);
     }
 
@@ -554,6 +573,16 @@ contract CycledCrowdsale is Ownable {
         return roundNum;
     }
 
+
+    function currentSaleCap() internal view onlyWhileOpen returns (uint256 cap) {
+        uint64 _now = uint64(block.timestamp);
+        if (_now >= date01May2018 && _now <= date31May2018) 
+            cap = PRE_SALE_HARD_CAP;// Pre-Sale round
+        else if (_now >= date13Aug2018 && _now <= date7Sep2018) 
+            cap = MAIN_SALE_HARD_CAP.add(PRE_SALE_HARD_CAP);// Main-Sale round
+    }
+
+
     /* 
     * @dev issue tokens
     * @param _beneficiary address that the tokens will be sent to.
@@ -561,36 +590,41 @@ contract CycledCrowdsale is Ownable {
     */
     function doIssueTokens(address _beneficiary, uint256 _investedWieAmount) internal onlyWhileOpen {
 
-        preValidateInvestment(_beneficiary, _investedWieAmount);
+        require(_beneficiary != address(0));
+        require(_investedWieAmount >= 0.05 ether);
+        
+        uint256 _currentSaleCap = currentSaleCap();
+        require(tokenSold < _currentSaleCap);
 
         //Compute number of tokens to transfer
         uint256 tokens = getTokenAfterDiscount(_investedWieAmount, tokenSold);
         
         // compute without actually increasing it
         uint256 increasedtokenSold = tokenSold.add(tokens);
-        uint8 curSaleRound = currentSale();
+     
 
-        //Checking if presale is running or mainsale
-        if (curSaleRound == 1) {
-            require(increasedtokenSold <= PRE_SALE_HARD_CAP);
-        } else {
-            require(increasedtokenSold <= MAIN_SALE_HARD_CAP.add(PRE_SALE_HARD_CAP)); 
+        if (increasedtokenSold > _currentSaleCap){
+            tokens = _currentSaleCap.sub(tokenSold);
+            increasedtokenSold = tokenSold.add(tokens);
+            _investedWieAmount = getTokenPriceAfterDiscount(tokens, tokenSold);
         }
         
         // increase token total supply
         tokenSold = increasedtokenSold;
+
         //increase wie raised
         weiRaised = weiRaised.add(_investedWieAmount);
 
         token.transferFrom(tokenWallet, _beneficiary, tokens);
 
         // event is fired when tokens issued
-        emit Issue(issuedIndex++, _beneficiary, tokens);
+        Issue(issuedIndex++, _beneficiary, tokens);
 
     }
 
    /*
     * @param _weiAmount Ether amount from that the token price to be calculated with including discount
+    * @param _totalTokenSold Total token sold so far
     * @return token amount after applying the discount
     */
     function getTokenAfterDiscount(uint256 _weiAmount, uint256 _totalTokenSold) public view returns (uint256) {
@@ -619,12 +653,55 @@ contract CycledCrowdsale is Ownable {
         return 0;
     }
 
+
     /*
-    * @param _weiAmount Ether amount from that the token price to be calculated with including discount
-    * @return token amount after applying the discount
+    * @param _tokenAmount Token amount from that the token price to be calculated with including discount
+    * @param _totalTokenSold Total token sold so far
+    * @return ether amount after applying the discount
+    */
+    function getTokenPriceAfterDiscount(uint256 _tokenAmount, uint256 _totalTokenSold) public view returns (uint256) {
+        
+        uint256 round = currentSale();        
+        uint256 maxTokenForMaxDiscount = (75000000 * 10**uint256(18));
+        
+        // No discount
+        if (round == 2) {
+            return _tokenAmount.div(BASE_RATE);
+        } 
+        // Pre-Sale discount
+        else if (round == 1) {
+            if(_totalTokenSold >= maxTokenForMaxDiscount) {
+                return _tokenAmount.div(BASE_RATE).div(100).mul(70);
+            } else {
+                uint256 maxDiscountedTokens = maxTokenForMaxDiscount.sub(_totalTokenSold);
+                if (maxDiscountedTokens >= _tokenAmount.div(BASE_RATE).div(100).mul(50)) {
+                    return _tokenAmount.div(BASE_RATE).div(100).mul(50);
+                } else {
+                    uint256 maxDiscounteTokenPrice = maxDiscountedTokens.mul(50).div(BASE_RATE.mul(100));
+                    return maxDiscountedTokens.sub((_tokenAmount.add(maxDiscounteTokenPrice)).div(BASE_RATE).div(100).mul(70));
+                }
+            }
+        } 
+        return 0;
+    }
+
+    /*
+    * @dev forward funds to fundwallet if any stuck in contract 
     */
     function forwardFunds() onlyOwner public {
         address thisAddress = this;
         fundWallet.transfer(thisAddress.balance);
+    }
+
+    // called by the owner on emergency, triggers stopped state
+    function halt() external onlyOwner {
+        require(halted != true);
+        halted = true;
+    }
+
+    // called by the owner on end of emergency, returns to normal state
+    function unhalt() external onlyOwner {
+        require(halted);
+        halted = false;
     }
 }

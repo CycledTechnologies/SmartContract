@@ -20,6 +20,11 @@ contract CycledToken is PausableToken, BurnableToken {
         address _foundersWallet,
         address _bountyWallet
     ) public {
+        require(_recyclingIncentivesWallet != address(0));
+        require(_cycledTechnologiesWallet != address(0));
+        require(_foundersWallet != address(0));
+        require(_bountyWallet != address(0));
+
         totalSupply = HARD_CAP;
         
         //20% of the hard cap, reserve for pre-sale
