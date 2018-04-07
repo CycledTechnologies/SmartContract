@@ -1,4 +1,4 @@
-pragma solidity 0.4.19;
+pragma solidity 0.4.21;
 
 
 /**
@@ -7,7 +7,7 @@ pragma solidity 0.4.19;
  * @dev see https://github.com/ethereum/EIPs/issues/179
  */
 contract ERC20Basic {
-  uint256 public totalSupply;
+  function totalSupply() public view returns (uint256);
   function balanceOf(address who) public view returns (uint256);
   function transfer(address to, uint256 value) public returns (bool);
   event Transfer(address indexed from, address indexed to, uint256 value);
@@ -35,7 +35,6 @@ contract Ownable {
     owner = msg.sender;
   }
 
-
   /**
    * @dev Throws if called by any account other than the owner.
    */
@@ -43,7 +42,6 @@ contract Ownable {
     require(msg.sender == owner);
     _;
   }
-
 
   /**
    * @dev Allows the current owner to transfer control of the contract to a newOwner.
@@ -66,6 +64,10 @@ contract Ownable {
  * @dev Math operations with safety checks that throw on error
  */
 library SafeMath {
+
+  /**
+  * @dev Multiplies two numbers, throws on overflow.
+  */
   function mul(uint256 a, uint256 b) internal pure returns (uint256) {
     if (a == 0) {
       return 0;
@@ -75,6 +77,9 @@ library SafeMath {
     return c;
   }
 
+  /**
+  * @dev Integer division of two numbers, truncating the quotient.
+  */
   function div(uint256 a, uint256 b) internal pure returns (uint256) {
     // assert(b > 0); // Solidity automatically throws when dividing by 0
     uint256 c = a / b;
@@ -82,19 +87,23 @@ library SafeMath {
     return c;
   }
 
+  /**
+  * @dev Subtracts two numbers, throws on overflow (i.e. if subtrahend is greater than minuend).
+  */
   function sub(uint256 a, uint256 b) internal pure returns (uint256) {
     assert(b <= a);
     return a - b;
   }
 
+  /**
+  * @dev Adds two numbers, throws on overflow.
+  */
   function add(uint256 a, uint256 b) internal pure returns (uint256) {
     uint256 c = a + b;
     assert(c >= a);
     return c;
   }
 }
-
-
 
 
 
@@ -121,6 +130,50 @@ contract ERC20 is ERC20Basic {
 }
 
 
+/**
+ * @title Basic token
+ * @dev Basic version of StandardToken, with no allowances.
+ */
+contract BasicToken is ERC20Basic {
+  using SafeMath for uint256;
+
+  mapping(address => uint256) balances;
+
+  uint256 totalSupply_;
+
+  /**
+  * @dev total number of tokens in existence
+  */
+  function totalSupply() public view returns (uint256) {
+    return totalSupply_;
+  }
+
+  /**
+  * @dev transfer token for a specified address
+  * @param _to The address to transfer to.
+  * @param _value The amount to be transferred.
+  */
+  function transfer(address _to, uint256 _value) public returns (bool) {
+    require(_to != address(0));
+    require(_value <= balances[msg.sender]);
+
+    // SafeMath.sub will throw if there is not enough balance.
+    balances[msg.sender] = balances[msg.sender].sub(_value);
+    balances[_to] = balances[_to].add(_value);
+    Transfer(msg.sender, _to, _value);
+    return true;
+  }
+
+  /**
+  * @dev Gets the balance of the specified address.
+  * @param _owner The address to query the the balance of.
+  * @return An uint256 representing the amount owned by the passed address.
+  */
+  function balanceOf(address _owner) public view returns (uint256 balance) {
+    return balances[_owner];
+  }
+
+}
 
 /**
  * @title Standard ERC20 token
@@ -217,12 +270,6 @@ contract StandardToken is ERC20, BasicToken {
 
 }
 
-
-
-
-
-
-
 /**
  * @title Pausable
  * @dev Base contract which allows children to implement an emergency stop mechanism.
@@ -268,12 +315,11 @@ contract Pausable is Ownable {
 }
 
 
+
 /**
  * @title Pausable token
- *
  * @dev StandardToken modified with pausable transfers.
  **/
-
 contract PausableToken is StandardToken, Pausable {
 
   function transfer(address _to, uint256 _value) public whenNotPaused returns (bool) {
@@ -298,73 +344,29 @@ contract PausableToken is StandardToken, Pausable {
 }
 
 
-
-
-
-
-
-
-
-
-/**
- * @title Basic token
- * @dev Basic version of StandardToken, with no allowances.
- */
-contract BasicToken is ERC20Basic {
-  using SafeMath for uint256;
-
-  mapping(address => uint256) balances;
-
-  /**
-  * @dev transfer token for a specified address
-  * @param _to The address to transfer to.
-  * @param _value The amount to be transferred.
-  */
-  function transfer(address _to, uint256 _value) public returns (bool) {
-    require(_to != address(0));
-    require(_value <= balances[msg.sender]);
-
-    // SafeMath.sub will throw if there is not enough balance.
-    balances[msg.sender] = balances[msg.sender].sub(_value);
-    balances[_to] = balances[_to].add(_value);
-    Transfer(msg.sender, _to, _value);
-    return true;
-  }
-
-  /**
-  * @dev Gets the balance of the specified address.
-  * @param _owner The address to query the the balance of.
-  * @return An uint256 representing the amount owned by the passed address.
-  */
-  function balanceOf(address _owner) public view returns (uint256 balance) {
-    return balances[_owner];
-  }
-
-}
-
-
 /**
  * @title Burnable Token
  * @dev Token that can be irreversibly burned (destroyed).
  */
 contract BurnableToken is BasicToken {
 
-    event Burn(address indexed burner, uint256 value);
+  event Burn(address indexed burner, uint256 value);
 
-    /**
-     * @dev Burns a specific amount of tokens.
-     * @param _value The amount of token to be burned.
-     */
-    function burn(uint256 _value) public {
-        require(_value <= balances[msg.sender]);
-        // no need to require value <= totalSupply, since that would imply the
-        // sender's balance is greater than the totalSupply, which *should* be an assertion failure
+  /**
+   * @dev Burns a specific amount of tokens.
+   * @param _value The amount of token to be burned.
+   */
+  function burn(uint256 _value) public {
+    require(_value <= balances[msg.sender]);
+    // no need to require value <= totalSupply, since that would imply the
+    // sender's balance is greater than the totalSupply, which *should* be an assertion failure
 
-        address burner = msg.sender;
-        balances[burner] = balances[burner].sub(_value);
-        totalSupply = totalSupply.sub(_value);
-        Burn(burner, _value);
-    }
+    address burner = msg.sender;
+    balances[burner] = balances[burner].sub(_value);
+    totalSupply_ = totalSupply_.sub(_value);
+    Burn(burner, _value);
+    Transfer(burner, address(0), _value);
+  }
 }
 
 
@@ -390,27 +392,27 @@ contract CycledToken is PausableToken, BurnableToken {
         require(_foundersWallet != address(0));
         require(_bountyWallet != address(0));
 
-        totalSupply = HARD_CAP;
+        totalSupply_ = HARD_CAP;
         
         //20% of the hard cap, reserve for pre-sale
-        balances[msg.sender] = totalSupply.mul(50).div(100); 
-        Transfer(0x0, msg.sender, totalSupply.mul(50).div(100));
+        balances[msg.sender] = totalSupply_.mul(50).div(100); 
+        emit Transfer(0x0, msg.sender, totalSupply_.mul(50).div(100));
 
         //20% of the hard cap, reserve for recycling incentives 
-        balances[_recyclingIncentivesWallet] = totalSupply.mul(20).div(100); 
-        Transfer(0x0, _recyclingIncentivesWallet, totalSupply.mul(20).div(100));
+        balances[_recyclingIncentivesWallet] = totalSupply_.mul(20).div(100); 
+        emit Transfer(0x0, _recyclingIncentivesWallet, totalSupply_.mul(20).div(100));
 
         //15% of the hard cap, reserve for cycled technologies
-        balances[_cycledTechnologiesWallet] = totalSupply.mul(15).div(100); 
-        Transfer(0x0, _cycledTechnologiesWallet, totalSupply.mul(15).div(100));
+        balances[_cycledTechnologiesWallet] = totalSupply_.mul(15).div(100); 
+        emit Transfer(0x0, _cycledTechnologiesWallet, totalSupply_.mul(15).div(100));
 
         //10% of the hard cap, reserve for founders
-        balances[_foundersWallet] = totalSupply.mul(10).div(100); 
-        Transfer(0x0, _foundersWallet, totalSupply.mul(10).div(100));
+        balances[_foundersWallet] = totalSupply_.mul(10).div(100); 
+        emit Transfer(0x0, _foundersWallet, totalSupply_.mul(10).div(100));
 
         //5% of the hard cap, reserve for bounty
-        balances[_bountyWallet] = totalSupply.mul(5).div(100);  
-        Transfer(0x0, _bountyWallet, totalSupply.mul(5).div(100));
+        balances[_bountyWallet] = totalSupply_.mul(5).div(100);  
+        emit Transfer(0x0, _bountyWallet, totalSupply_.mul(5).div(100));
 
     }
 
@@ -426,19 +428,38 @@ contract Whitelist is Ownable {
     function Whitelist() public {
     }
 
-
+    /**
+    * @dev Adds address to whitelist.
+    * @param investor Address to be added to the whitelist
+    */
     function addInvestor(address investor) external onlyOwner {
         require(investor != 0x0 && !whitelist[investor]);
         whitelist[investor] = true;
     }
 
+    /**
+    * @dev Adds list of addresses to whitelist.
+    * @param _beneficiaries Addresses to be added to the whitelist
+    */
+    function addManyToWhitelist(address[] _beneficiaries) external onlyOwner {
+        for (uint256 i = 0; i < _beneficiaries.length; i++) {
+            whitelist[_beneficiaries[i]] = true;
+        }
+    }
 
+    /**
+    * @dev Remove address to whitelist.
+    * @param investor Address to be removed to the whitelist
+    */
     function removeInvestor(address investor) external onlyOwner {
         require(investor != 0x0 && whitelist[investor]);
         whitelist[investor] = false;
     }
 
-
+    /**
+    * @dev Check if address is in whitelist or not.
+    * @param investor Address to be removed to the whitelist
+    */
     function isWhitelisted(address investor) constant external returns (bool result) {
         require(investor != address(0));
         return whitelist[investor];
@@ -618,7 +639,7 @@ contract CycledCrowdsale is Ownable {
         token.transferFrom(tokenWallet, _beneficiary, tokens);
 
         // event is fired when tokens issued
-        Issue(issuedIndex++, _beneficiary, tokens);
+        emit Issue(issuedIndex++, _beneficiary, tokens);
 
     }
 
