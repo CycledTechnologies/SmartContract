@@ -6,13 +6,18 @@ import "../node_modules/zeppelin-solidity/contracts/token/ERC20/BurnableToken.so
 /**
  * @title Cycled Token
  */
-contract CycledToken is PausableToken, BurnableToken {
+contract CycledToken is BurnableToken, PausableToken {
     string public constant name = "CycledToken";
     string public constant symbol = "CYD";
     uint8 public constant decimals = 18;
+    bool public transferEnabled;
 
     /// Maximum tokens to be allocated.
     uint256 public constant HARD_CAP = 1000000000 * 10**uint256(decimals);
+
+    event TransferEnabled();
+    event TransferDisabled();
+
     
     function CycledToken(
         address _recyclingIncentivesWallet,
@@ -47,6 +52,38 @@ contract CycledToken is PausableToken, BurnableToken {
         balances[_bountyWallet] = totalSupply_.mul(5).div(100);  
         emit Transfer(0x0, _bountyWallet, totalSupply_.mul(5).div(100));
 
+        transferEnabled = false;
+
     }
 
+    function enableTransfers() onlyOwner public {
+        transferEnabled = true;
+        emit TransferEnabled();
+    }
+
+    function disableTransfers() onlyOwner public {
+        transferEnabled = false;
+        emit TransferDisabled();
+    }
+
+    /**
+    * @dev transfer token for a specified address
+    * @param to The address to transfer to.
+    * @param value The amount to be transferred.
+    */
+    function transfer(address to, uint256 value) public returns (bool) {
+        require(transferEnabled || msg.sender == owner);
+        return super.transfer(to, value);
+    }
+
+    /**
+    * @dev Transfer tokens from one address to another
+    * @param from address The address which you want to send tokens from
+    * @param to address The address which you want to transfer to
+    * @param value uint256 the amount of tokens to be transferred
+    */
+    function transferFrom(address from, address to, uint256 value) public returns (bool) {
+        require(transferEnabled || from == owner);
+        return super.transferFrom(from, to, value);
+    }
 }
