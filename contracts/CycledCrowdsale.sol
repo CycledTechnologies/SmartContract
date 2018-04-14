@@ -2,11 +2,12 @@ pragma solidity 0.4.21;
 
 import "../node_modules/zeppelin-solidity/contracts/math/SafeMath.sol";
 import "../node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol";
+import "./RefundableCrowdsale.sol";
 import "./CycledToken.sol";
 import "./Whitelist.sol";
 
 
-contract CycledCrowdsale is Ownable {
+contract CycledCrowdsale is RefundableCrowdsale {
     using SafeMath for uint256;
 
     // The token being sold
@@ -35,9 +36,6 @@ contract CycledCrowdsale is Ownable {
     //main sale cap
     uint256 public MAIN_SALE_HARD_CAP = 300000000 * 10**uint256(DECIMAL);
 
-    // Total Wei raised
-    uint256 public weiRaised = 0;
-
     uint8 private constant DECIMAL = 18;
 
     /// Issue event index starting from 0.
@@ -65,8 +63,7 @@ contract CycledCrowdsale is Ownable {
     */
     modifier onlyWhileOpen {
         uint64 _now = uint64(block.timestamp);
-        require( (_now >= date01May2018 && _now <= date31May2018) || 
-                    (_now >= date13Aug2018 && _now <= date7Sep2018) );
+        require((_now >= date01May2018 && _now <= date31May2018) || (_now >= date13Aug2018 && _now <= date7Sep2018));
         _;
     }
 
@@ -74,11 +71,13 @@ contract CycledCrowdsale is Ownable {
     * @dev Reverts if halted 
     */
     modifier stopIfHalted {
-      require(!halted);
-      _;
+        require(!halted);
+        _;
     }
 
-    function CycledCrowdsale(address _tokenAddress, address _whitelistAddress, address _fundWallet) public {
+    function CycledCrowdsale(address _tokenAddress, uint256 _goal, address _whitelistAddress, address _fundWallet) public 
+    RefundableCrowdsale(_goal, _fundWallet)
+    {
         require(_tokenAddress != address(0));
         require(_whitelistAddress != address(0));
         require(_fundWallet != address(0));
@@ -101,22 +100,16 @@ contract CycledCrowdsale is Ownable {
     */
     function buyTokens(address _beneficiary) public stopIfHalted payable {
         uint256 weiAmount = msg.value;
-        require(whitelist.isWhitelisted(_beneficiary));
-        doIssueTokens(_beneficiary, weiAmount);
-        fundWallet.transfer(weiAmount);
-    }
-
         
-    /* 
-    * @dev tranfer tokens to beneficiary as per its investment.
-    * @param _beneficiary to which tranfer token
-    * @param _investedWieAmount investment amount by the beneficiary
-    */
-    function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner stopIfHalted onlyWhileOpen {
-       doIssueTokens(_beneficiary, _investedWieAmount);
+        require(_beneficiary != address(0));
+        require(weiAmount >= 0.05 ether);
+      
+        require(whitelist.isWhitelisted(_beneficiary));
+
+        doIssueTokens(_beneficiary, weiAmount);
+        forwardFundsToWallet();
     }
 
-    
     /* 
     * @dev Determine the current sale round.
     * @return current sale round by date.
@@ -148,10 +141,6 @@ contract CycledCrowdsale is Ownable {
     * @param _investedWieAmount amount to invest
     */
     function doIssueTokens(address _beneficiary, uint256 _investedWieAmount) internal onlyWhileOpen {
-
-        require(_beneficiary != address(0));
-        require(_investedWieAmount >= 0.05 ether);
-        
         uint256 _currentSaleCap = currentSaleCap();
         require(tokenSold < _currentSaleCap);
 
@@ -242,6 +231,20 @@ contract CycledCrowdsale is Ownable {
             }
         } 
         return 0;
+    }
+
+
+    /*
+    * @dev forward funds
+    */
+    function forwardFundsToWallet() internal {  
+        if (goalReached()) {
+            //After goal reached, funds are transfered to fundWallet
+            fundWallet.transfer(msg.value);
+        } else {
+            //Storing funds to vault, till goal reached
+            _forwardFunds();
+        }   
     }
 
     /*

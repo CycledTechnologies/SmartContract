@@ -67,7 +67,7 @@ contract CycledToken is BurnableToken, PausableToken {
     }
 
     /**
-    * @dev transfer token for a specified address
+    * @dev transfer token to a specified address
     * @param to The address to transfer to.
     * @param value The amount to be transferred.
     */
