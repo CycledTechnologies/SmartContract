@@ -116,6 +116,165 @@ library SafeMath {
 
 
 
+/**
+ * @title RefundVault
+ * @dev This contract is used for storing funds while a crowdsale
+ * is in progress. Supports refunding the money if crowdsale fails,
+ * and forwarding it if crowdsale is successful.
+ */
+contract RefundVault is Ownable {
+    using SafeMath for uint256;
+
+    enum State { Active, Refunding, Closed }
+
+    mapping (address => uint256) public deposited;
+    address public wallet;
+    State public state;
+
+    event Closed();
+    event RefundsEnabled();
+    event Refunded(address indexed beneficiary, uint256 weiAmount);
+
+    /**
+    * @param _wallet Vault address
+    */
+    function RefundVault(address _wallet) public {
+        require(_wallet != address(0));
+        wallet = _wallet;
+        state = State.Active;
+    }
+
+    /**
+    * @param investor Investor address
+    */
+    function deposit(address investor) onlyOwner public payable {
+        require(state == State.Active);
+        deposited[investor] = deposited[investor].add(msg.value);
+    }
+
+    function close() onlyOwner public {
+        require(state == State.Active);
+        address thisAddress = this;
+        state = State.Closed;
+        emit Closed();
+        wallet.transfer(thisAddress.balance);
+    }
+
+    function enableRefunds() onlyOwner public {
+        require(state == State.Active);
+        state = State.Refunding;
+        emit RefundsEnabled();
+    }
+
+    /**
+    * @param investor Investor address
+    */
+    function refund(address investor) public {
+        require(state == State.Refunding);
+        uint256 depositedValue = deposited[investor];
+        deposited[investor] = 0;
+        investor.transfer(depositedValue);
+        emit Refunded(investor, depositedValue);
+    }
+}
+
+
+
+
+/**
+ * @title RefundableCrowdsaled
+ * @dev Extension of Crowdsale contract that adds a funding goal, and
+ * the possibility of users getting a refund if goal is not met.
+ * Uses a RefundVault as the crowdsale's vault.
+ */
+contract RefundableCrowdsale is Ownable {
+    using SafeMath for uint256;
+
+    // minimum amount of funds to be raised in weis
+    uint256 public goal;
+
+    // refund vault used to hold funds while crowdsale is running
+    RefundVault public vault;
+
+     // Total Wei raised
+    uint256 public weiRaised;
+
+    bool public  isCloseOrEnableRefundDone= false;
+
+    event closeOrEnableRefund();
+
+    /**
+    * @dev Must be called after crowdsale ends, to do some extra finalization
+    * work. Calls the contract's finalization function.
+    */
+    function transferFundFromVault() onlyOwner public {
+        require(!isCloseOrEnableRefundDone);
+
+        closeOrEnablefund();
+        emit closeOrEnableRefund();
+
+        isCloseOrEnableRefundDone = true;
+    }
+
+    /**
+    * @dev Constructor, creates RefundVault. 
+    * @param _goal Funding goal
+    * @param _wallet Refund Vault
+    */
+    function RefundableCrowdsale(uint256 _goal, address _wallet) public {
+        require(_goal > 0);
+        vault = new RefundVault(_wallet);
+        goal = _goal;
+    }
+
+    /**
+    * @dev Investors can claim refunds here if crowdsale is unsuccessful
+    */
+    function claimRefund() public {
+        require(isCloseOrEnableRefundDone);
+        require(!goalReached());
+
+        vault.refund(msg.sender);
+    }
+
+    /**
+    * @dev Checks whether funding goal was reached. 
+    * @return Whether funding goal was reached
+    */
+    function goalReached() public view returns (bool) {
+        return weiRaised >= goal;
+    }
+
+    /**
+    * @dev Close vault and tranfer fund to wallet or enable Refund
+    */
+    function closeOrEnablefund() internal {
+        if (goalReached()) {
+            vault.close();
+        } else {
+            vault.enableRefunds();
+        }
+    }
+
+    /**
+    * @dev Overrides Crowdsale fund forwarding, sending funds to vault.
+    */
+    function _forwardFunds() internal {
+        vault.deposit.value(msg.value)(msg.sender);
+    }
+
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 /**
@@ -128,7 +287,6 @@ contract ERC20 is ERC20Basic {
   function approve(address spender, uint256 value) public returns (bool);
   event Approval(address indexed owner, address indexed spender, uint256 value);
 }
-
 
 /**
  * @title Basic token
@@ -174,6 +332,8 @@ contract BasicToken is ERC20Basic {
   }
 
 }
+
+
 
 /**
  * @title Standard ERC20 token
@@ -269,6 +429,12 @@ contract StandardToken is ERC20, BasicToken {
   }
 
 }
+
+
+
+
+
+
 
 /**
  * @title Pausable
@@ -373,13 +539,18 @@ contract BurnableToken is BasicToken {
 /**
  * @title Cycled Token
  */
-contract CycledToken is PausableToken, BurnableToken {
+contract CycledToken is BurnableToken, PausableToken {
     string public constant name = "CycledToken";
     string public constant symbol = "CYD";
     uint8 public constant decimals = 18;
+    bool public transferEnabled;
 
     /// Maximum tokens to be allocated.
     uint256 public constant HARD_CAP = 1000000000 * 10**uint256(decimals);
+
+    event TransferEnabled();
+    event TransferDisabled();
+
     
     function CycledToken(
         address _recyclingIncentivesWallet,
@@ -414,8 +585,40 @@ contract CycledToken is PausableToken, BurnableToken {
         balances[_bountyWallet] = totalSupply_.mul(5).div(100);  
         emit Transfer(0x0, _bountyWallet, totalSupply_.mul(5).div(100));
 
+        transferEnabled = false;
+
     }
 
+    function enableTransfers() onlyOwner public {
+        transferEnabled = true;
+        emit TransferEnabled();
+    }
+
+    function disableTransfers() onlyOwner public {
+        transferEnabled = false;
+        emit TransferDisabled();
+    }
+
+    /**
+    * @dev transfer token to a specified address
+    * @param to The address to transfer to.
+    * @param value The amount to be transferred.
+    */
+    function transfer(address to, uint256 value) public returns (bool) {
+        require(transferEnabled || msg.sender == owner);
+        return super.transfer(to, value);
+    }
+
+    /**
+    * @dev Transfer tokens from one address to another
+    * @param from address The address which you want to send tokens from
+    * @param to address The address which you want to transfer to
+    * @param value uint256 the amount of tokens to be transferred
+    */
+    function transferFrom(address from, address to, uint256 value) public returns (bool) {
+        require(transferEnabled || from == owner);
+        return super.transferFrom(from, to, value);
+    }
 }
 
 
@@ -468,7 +671,7 @@ contract Whitelist is Ownable {
 }
 
 
-contract CycledCrowdsale is Ownable {
+contract CycledCrowdsale is RefundableCrowdsale {
     using SafeMath for uint256;
 
     // The token being sold
@@ -497,9 +700,6 @@ contract CycledCrowdsale is Ownable {
     //main sale cap
     uint256 public MAIN_SALE_HARD_CAP = 300000000 * 10**uint256(DECIMAL);
 
-    // Total Wei raised
-    uint256 public weiRaised = 0;
-
     uint8 private constant DECIMAL = 18;
 
     /// Issue event index starting from 0.
@@ -527,8 +727,7 @@ contract CycledCrowdsale is Ownable {
     */
     modifier onlyWhileOpen {
         uint64 _now = uint64(block.timestamp);
-        require( (_now >= date01May2018 && _now <= date31May2018) || 
-                    (_now >= date13Aug2018 && _now <= date7Sep2018) );
+        require((_now >= date01May2018 && _now <= date31May2018) || (_now >= date13Aug2018 && _now <= date7Sep2018));
         _;
     }
 
@@ -536,11 +735,13 @@ contract CycledCrowdsale is Ownable {
     * @dev Reverts if halted 
     */
     modifier stopIfHalted {
-      require(!halted);
-      _;
+        require(!halted);
+        _;
     }
 
-    function CycledCrowdsale(address _tokenAddress, address _whitelistAddress, address _fundWallet) public {
+    function CycledCrowdsale(address _tokenAddress, uint256 _goal, address _whitelistAddress, address _fundWallet) public 
+    RefundableCrowdsale(_goal, _fundWallet)
+    {
         require(_tokenAddress != address(0));
         require(_whitelistAddress != address(0));
         require(_fundWallet != address(0));
@@ -563,22 +764,16 @@ contract CycledCrowdsale is Ownable {
     */
     function buyTokens(address _beneficiary) public stopIfHalted payable {
         uint256 weiAmount = msg.value;
-        require(whitelist.isWhitelisted(_beneficiary));
-        doIssueTokens(_beneficiary, weiAmount);
-        fundWallet.transfer(weiAmount);
-    }
-
         
-    /* 
-    * @dev tranfer tokens to beneficiary as per its investment.
-    * @param _beneficiary to which tranfer token
-    * @param _investedWieAmount investment amount by the beneficiary
-    */
-    function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner stopIfHalted onlyWhileOpen {
-       doIssueTokens(_beneficiary, _investedWieAmount);
+        require(_beneficiary != address(0));
+        require(weiAmount >= 0.05 ether);
+      
+        require(whitelist.isWhitelisted(_beneficiary));
+
+        doIssueTokens(_beneficiary, weiAmount);
+        forwardFundsToWallet();
     }
 
-    
     /* 
     * @dev Determine the current sale round.
     * @return current sale round by date.
@@ -610,10 +805,6 @@ contract CycledCrowdsale is Ownable {
     * @param _investedWieAmount amount to invest
     */
     function doIssueTokens(address _beneficiary, uint256 _investedWieAmount) internal onlyWhileOpen {
-
-        require(_beneficiary != address(0));
-        require(_investedWieAmount >= 0.05 ether);
-        
         uint256 _currentSaleCap = currentSaleCap();
         require(tokenSold < _currentSaleCap);
 
@@ -704,6 +895,20 @@ contract CycledCrowdsale is Ownable {
             }
         } 
         return 0;
+    }
+
+
+    /*
+    * @dev forward funds
+    */
+    function forwardFundsToWallet() internal {  
+        if (goalReached()) {
+            //After goal reached, funds are transfered to fundWallet
+            fundWallet.transfer(msg.value);
+        } else {
+            //Storing funds to vault, till goal reached
+            _forwardFunds();
+        }   
     }
 
     /*
