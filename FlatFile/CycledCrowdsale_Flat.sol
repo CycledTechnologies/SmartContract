@@ -745,6 +745,8 @@ contract CycledCrowdsale is RefundableCrowdsale {
         require(_tokenAddress != address(0));
         require(_whitelistAddress != address(0));
         require(_fundWallet != address(0));
+        require(_goal > 0 && _goal <= PRE_SALE_HARD_CAP.add(MAIN_SALE_HARD_CAP));
+        
         tokenWallet = msg.sender;
         fundWallet = _fundWallet;
         token = CycledToken(_tokenAddress);
