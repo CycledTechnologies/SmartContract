@@ -22,7 +22,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
     address private tokenWallet;
 
     //Wallet where store funds 
-    address private fundWallet;
+    address public fundWallet;
 
     //use to halt the sale
     bool public halted;
