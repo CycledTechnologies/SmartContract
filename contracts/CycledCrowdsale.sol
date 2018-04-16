@@ -253,8 +253,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
     * @dev forward funds to fundwallet if any stuck in contract 
     */
     function forwardFunds() onlyOwner public {
-        address thisAddress = this;
-        fundWallet.transfer(thisAddress.balance);
+        fundWallet.transfer(address(this).balance);
     }
 
     // called by the owner on emergency, triggers stopped state
