@@ -63,6 +63,16 @@ contract RefundableCrowdsale is Ownable {
     }
 
     /**
+    * @dev Owner can refund the fund to investor
+    */
+    function refundToInvestor(address investor) onlyOwner public {
+        require(isCloseOrEnableRefundDone);
+        require(!goalReached());
+
+        vault.refund(investor);
+    }
+
+    /**
     * @dev Checks whether funding goal was reached. 
     * @return Whether funding goal was reached
     */
