@@ -1,4 +1,4 @@
-pragma solidity 0.4.21;
+pragma solidity ^0.4.18;
 
 
 /**
@@ -195,7 +195,7 @@ contract RefundableCrowdsale is Ownable {
     // refund vault used to hold funds while crowdsale is running
     RefundVault public vault;
 
-    //
+    //Closing time of first sale
     uint64 closingTime;
 
      // Total Wei raised
@@ -358,6 +358,7 @@ contract BasicToken is ERC20Basic {
   }
 
 }
+
 
 /**
  * @title Standard ERC20 token
@@ -532,6 +533,14 @@ contract PausableToken is StandardToken, Pausable {
     return super.decreaseApproval(_spender, _subtractedValue);
   }
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -742,13 +751,15 @@ contract CycledCrowdsale is RefundableCrowdsale {
     // USe to set the base rate
     uint256 private BASE_RATE = 25000;
 
+    uint8 private constant DECIMAL = 18;
+
+    uint256 public constant  FIFTY_PERCENT_DISCOUNTED_TOKENS = 75000000 * 10**uint256(DECIMAL);
+
     //pre sale cap
-    uint256 public PRE_SALE_HARD_CAP = 200000000 * 10**uint256(DECIMAL);
+    uint256 public constant PRE_SALE_HARD_CAP = 100000000 * 10**uint256(DECIMAL);
     
     //main sale cap
-    uint256 public MAIN_SALE_HARD_CAP = 300000000 * 10**uint256(DECIMAL);
-
-    uint8 private constant DECIMAL = 18;
+    uint256 public constant MAIN_SALE_HARD_CAP = 400000000 * 10**uint256(DECIMAL);
 
     /// Issue event index starting from 0.
     uint64 public issuedIndex = 0;
@@ -892,7 +903,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
     function getTokenAfterDiscount(uint256 _weiAmount, uint256 _totalTokenSold) public view returns (uint256) {
         
         uint256 round = currentSale();        
-        uint256 maxTokenForMaxDiscount = (75000000 * 10**uint256(18));
+        uint256 maxTokenForMaxDiscount = FIFTY_PERCENT_DISCOUNTED_TOKENS;
         
         // No discount
         if (round == 2) {
@@ -924,7 +935,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
     function getTokenPriceAfterDiscount(uint256 _tokenAmount, uint256 _totalTokenSold) public view returns (uint256) {
         
         uint256 round = currentSale();        
-        uint256 maxTokenForMaxDiscount = (75000000 * 10**uint256(18));
+        uint256 maxTokenForMaxDiscount = FIFTY_PERCENT_DISCOUNTED_TOKENS;
         
         // No discount
         if (round == 2) {
