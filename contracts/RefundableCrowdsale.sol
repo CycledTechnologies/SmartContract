@@ -21,7 +21,7 @@ contract RefundableCrowdsale is Ownable {
     // refund vault used to hold funds while crowdsale is running
     RefundVault public vault;
 
-    //
+    //Closing time of first sale
     uint64 closingTime;
 
      // Total Wei raised
