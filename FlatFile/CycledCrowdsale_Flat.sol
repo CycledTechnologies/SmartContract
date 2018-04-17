@@ -154,10 +154,9 @@ contract RefundVault is Ownable {
 
     function close() onlyOwner public {
         require(state == State.Active);
-        address thisAddress = this;
         state = State.Closed;
         emit Closed();
-        wallet.transfer(thisAddress.balance);
+        wallet.transfer(address(this).balance);
     }
 
     function enableRefunds() onlyOwner public {
@@ -196,45 +195,71 @@ contract RefundableCrowdsale is Ownable {
     // refund vault used to hold funds while crowdsale is running
     RefundVault public vault;
 
+    //
+    uint64 closingTime;
+
      // Total Wei raised
     uint256 public weiRaised;
 
-    bool public  isCloseOrEnableRefundDone= false;
+    bool public isFinalized = false;
 
-    event closeOrEnableRefund();
-
-    /**
-    * @dev Must be called after crowdsale ends, to do some extra finalization
-    * work. Calls the contract's finalization function.
-    */
-    function transferFundFromVault() onlyOwner public {
-        require(!isCloseOrEnableRefundDone);
-
-        closeOrEnablefund();
-        emit closeOrEnableRefund();
-
-        isCloseOrEnableRefundDone = true;
-    }
+    event Finalized();
 
     /**
     * @dev Constructor, creates RefundVault. 
     * @param _goal Funding goal
     * @param _wallet Refund Vault
+    * @param _closingTime closing time of first sale
     */
-    function RefundableCrowdsale(uint256 _goal, address _wallet) public {
+    function RefundableCrowdsale(uint256 _goal, address _wallet, uint64 _closingTime) public {
         require(_goal > 0);
+        require(_closingTime >= block.timestamp);
+
         vault = new RefundVault(_wallet);
         goal = _goal;
+        closingTime = _closingTime;
+    }
+
+    
+    /**
+    * @dev Must be called after crowdsale ends, to do some extra finalization
+    * work. Calls the contract's finalization function.
+    */
+    function finalize() onlyOwner public {
+        require(!isFinalized);
+        require(hasClosed());
+
+        finalization();
+        emit Finalized();
+
+        isFinalized = true;
+    }
+
+    /**
+    * @dev Checks whether the period in which the crowdsale is open has already elapsed or goal reached.
+    */
+    function hasClosed() public view returns (bool) {
+        return (block.timestamp > closingTime || goalReached());
     }
 
     /**
     * @dev Investors can claim refunds here if crowdsale is unsuccessful
     */
     function claimRefund() public {
-        require(isCloseOrEnableRefundDone);
+        require(isFinalized);
         require(!goalReached());
 
         vault.refund(msg.sender);
+    }
+
+    /**
+    * @dev Owner can refund the fund to investor
+    */
+    function refundToInvestor(address investor) onlyOwner public {
+        require(isFinalized);
+        require(!goalReached());
+
+        vault.refund(investor);
     }
 
     /**
@@ -248,7 +273,7 @@ contract RefundableCrowdsale is Ownable {
     /**
     * @dev Close vault and tranfer fund to wallet or enable Refund
     */
-    function closeOrEnablefund() internal {
+    function finalization() internal {
         if (goalReached()) {
             vault.close();
         } else {
@@ -287,6 +312,7 @@ contract ERC20 is ERC20Basic {
   function approve(address spender, uint256 value) public returns (bool);
   event Approval(address indexed owner, address indexed spender, uint256 value);
 }
+
 
 /**
  * @title Basic token
@@ -332,8 +358,6 @@ contract BasicToken is ERC20Basic {
   }
 
 }
-
-
 
 /**
  * @title Standard ERC20 token
@@ -510,6 +534,8 @@ contract PausableToken is StandardToken, Pausable {
 }
 
 
+
+
 /**
  * @title Burnable Token
  * @dev Token that can be irreversibly burned (destroyed).
@@ -626,16 +652,38 @@ contract CycledToken is BurnableToken, PausableToken {
 
 contract Whitelist is Ownable {
     mapping (address => bool) public whitelist;
+    address public curator;
+    event CurationRightsTransferred(address indexed previousCurator, address indexed newCurator);
 
 
     function Whitelist() public {
+        curator = owner;
+    }
+
+    /**
+    * @dev Throws if called by any account other than the curator.
+    */
+    modifier onlyCurator() {
+        require(msg.sender == curator);
+        _;
+    }
+
+
+    /**
+    * @dev Allows the current owner to transfer control of the contract to a newOwner.
+    * @param newCurator The address to transfer ownership to.
+    */
+    function transferCurationRights(address newCurator) public onlyOwner {
+        require(newCurator != address(0));
+        emit CurationRightsTransferred(curator, newCurator);
+        curator = newCurator;
     }
 
     /**
     * @dev Adds address to whitelist.
     * @param investor Address to be added to the whitelist
     */
-    function addInvestor(address investor) external onlyOwner {
+    function addInvestor(address investor) external onlyCurator {
         require(investor != 0x0 && !whitelist[investor]);
         whitelist[investor] = true;
     }
@@ -644,7 +692,7 @@ contract Whitelist is Ownable {
     * @dev Adds list of addresses to whitelist.
     * @param _beneficiaries Addresses to be added to the whitelist
     */
-    function addManyToWhitelist(address[] _beneficiaries) external onlyOwner {
+    function addManyToWhitelist(address[] _beneficiaries) external onlyCurator {
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
             whitelist[_beneficiaries[i]] = true;
         }
@@ -654,7 +702,7 @@ contract Whitelist is Ownable {
     * @dev Remove address to whitelist.
     * @param investor Address to be removed to the whitelist
     */
-    function removeInvestor(address investor) external onlyOwner {
+    function removeInvestor(address investor) external onlyCurator {
         require(investor != 0x0 && whitelist[investor]);
         whitelist[investor] = false;
     }
@@ -686,7 +734,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
     address private tokenWallet;
 
     //Wallet where store funds 
-    address private fundWallet;
+    address public fundWallet;
 
     //use to halt the sale
     bool public halted;
@@ -740,13 +788,13 @@ contract CycledCrowdsale is RefundableCrowdsale {
     }
 
     function CycledCrowdsale(address _tokenAddress, uint256 _goal, address _whitelistAddress, address _fundWallet) public 
-    RefundableCrowdsale(_goal, _fundWallet)
+    RefundableCrowdsale(_goal, _fundWallet, date31May2018)
     {
         require(_tokenAddress != address(0));
         require(_whitelistAddress != address(0));
         require(_fundWallet != address(0));
         require(_goal > 0 && _goal <= PRE_SALE_HARD_CAP.add(MAIN_SALE_HARD_CAP));
-        
+
         tokenWallet = msg.sender;
         fundWallet = _fundWallet;
         token = CycledToken(_tokenAddress);
@@ -917,8 +965,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
     * @dev forward funds to fundwallet if any stuck in contract 
     */
     function forwardFunds() onlyOwner public {
-        address thisAddress = this;
-        fundWallet.transfer(thisAddress.balance);
+        fundWallet.transfer(address(this).balance);
     }
 
     // called by the owner on emergency, triggers stopped state

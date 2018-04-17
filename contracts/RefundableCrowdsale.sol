@@ -21,42 +21,58 @@ contract RefundableCrowdsale is Ownable {
     // refund vault used to hold funds while crowdsale is running
     RefundVault public vault;
 
+    //
+    uint64 closingTime;
+
      // Total Wei raised
     uint256 public weiRaised;
 
-    bool public  isCloseOrEnableRefundDone= false;
+    bool public isFinalized = false;
 
-    event closeOrEnableRefund();
-
-    /**
-    * @dev Must be called after crowdsale ends, to do some extra finalization
-    * work. Calls the contract's finalization function.
-    */
-    function transferFundFromVault() onlyOwner public {
-        require(!isCloseOrEnableRefundDone);
-
-        closeOrEnablefund();
-        emit closeOrEnableRefund();
-
-        isCloseOrEnableRefundDone = true;
-    }
+    event Finalized();
 
     /**
     * @dev Constructor, creates RefundVault. 
     * @param _goal Funding goal
     * @param _wallet Refund Vault
+    * @param _closingTime closing time of first sale
     */
-    function RefundableCrowdsale(uint256 _goal, address _wallet) public {
+    function RefundableCrowdsale(uint256 _goal, address _wallet, uint64 _closingTime) public {
         require(_goal > 0);
+        require(_closingTime >= block.timestamp);
+
         vault = new RefundVault(_wallet);
         goal = _goal;
+        closingTime = _closingTime;
+    }
+
+    
+    /**
+    * @dev Must be called after crowdsale ends, to do some extra finalization
+    * work. Calls the contract's finalization function.
+    */
+    function finalize() onlyOwner public {
+        require(!isFinalized);
+        require(hasClosed());
+
+        finalization();
+        emit Finalized();
+
+        isFinalized = true;
+    }
+
+    /**
+    * @dev Checks whether the period in which the crowdsale is open has already elapsed or goal reached.
+    */
+    function hasClosed() public view returns (bool) {
+        return (block.timestamp > closingTime || goalReached());
     }
 
     /**
     * @dev Investors can claim refunds here if crowdsale is unsuccessful
     */
     function claimRefund() public {
-        require(isCloseOrEnableRefundDone);
+        require(isFinalized);
         require(!goalReached());
 
         vault.refund(msg.sender);
@@ -66,7 +82,7 @@ contract RefundableCrowdsale is Ownable {
     * @dev Owner can refund the fund to investor
     */
     function refundToInvestor(address investor) onlyOwner public {
-        require(isCloseOrEnableRefundDone);
+        require(isFinalized);
         require(!goalReached());
 
         vault.refund(investor);
@@ -83,7 +99,7 @@ contract RefundableCrowdsale is Ownable {
     /**
     * @dev Close vault and tranfer fund to wallet or enable Refund
     */
-    function closeOrEnablefund() internal {
+    function finalization() internal {
         if (goalReached()) {
             vault.close();
         } else {

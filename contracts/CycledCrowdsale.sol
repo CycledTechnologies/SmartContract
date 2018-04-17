@@ -76,7 +76,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
     }
 
     function CycledCrowdsale(address _tokenAddress, uint256 _goal, address _whitelistAddress, address _fundWallet) public 
-    RefundableCrowdsale(_goal, _fundWallet)
+    RefundableCrowdsale(_goal, _fundWallet, date31May2018)
     {
         require(_tokenAddress != address(0));
         require(_whitelistAddress != address(0));
