@@ -65,7 +65,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
     */
     modifier onlyWhileOpen {
         uint64 _now = uint64(block.timestamp);
-        require((_now >= date01May2018 && _now <= date31May2018) || (_now >= date13Aug2018 && _now <= date7Sep2018));
+        require((_now >= date01May2018 && _now <= date31May2018) || (_now >= date13Aug2018 && _now <= date7Sep2018 && goalReached()));
         _;
     }
 
