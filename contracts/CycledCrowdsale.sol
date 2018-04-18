@@ -45,16 +45,16 @@ contract CycledCrowdsale is RefundableCrowdsale {
 
 
     /// pre-sale start time; Is equivalent to: Tue, 01 May 2018 @ 1:00pm (UTC) ; Round 1
-    uint64 private constant date01May2018 = 1525179600;
+    uint64 public constant date01May2018 = 1525179600;
 
     /// pre-sale end time; Is equivalent to: Thu, 31 May 2018 @ 11:59pm (UTC) ; Round 1
-    uint64 private constant date31May2018 = 1527811140;
+    uint64 public constant date31May2018 = 1527811140;
 
     /// main-sale start time; Is equivalent to: Mon, 13 Aug 2018 @ 1:00pm (UTC) ; Round 2
-    uint64 private constant date13Aug2018 = 1534165200;
+    uint64 public constant date13Aug2018 = 1534165200;
 
     /// main-sale end time; Is equivalent to: Fri, 07 Sep 2018 @ 11:59pm (UTC)  ; Round 2
-    uint64 private constant date7Sep2018 = 1536364740;
+    uint64 public constant date7Sep2018 = 1536364740;
 
 
     /// Emitted for each sucuessful token purchase.
