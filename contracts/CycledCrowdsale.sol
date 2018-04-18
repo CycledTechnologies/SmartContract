@@ -1,12 +1,13 @@
-pragma solidity 0.4.19;
+pragma solidity 0.4.21;
 
 import "../node_modules/zeppelin-solidity/contracts/math/SafeMath.sol";
 import "../node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol";
+import "./RefundableCrowdsale.sol";
 import "./CycledToken.sol";
 import "./Whitelist.sol";
 
 
-contract CycledCrowdsale is Ownable {
+contract CycledCrowdsale is RefundableCrowdsale {
     using SafeMath for uint256;
 
     // The token being sold
@@ -21,7 +22,7 @@ contract CycledCrowdsale is Ownable {
     address private tokenWallet;
 
     //Wallet where store funds 
-    address private fundWallet;
+    address public fundWallet;
 
     //use to halt the sale
     bool public halted;
@@ -29,32 +30,31 @@ contract CycledCrowdsale is Ownable {
     // USe to set the base rate
     uint256 private BASE_RATE = 25000;
 
+    uint8 private constant DECIMAL = 18;
+
+    uint256 public constant  FIFTY_PERCENT_DISCOUNTED_TOKENS = 75000000 * 10**uint256(DECIMAL);
+
     //pre sale cap
-    uint256 public PRE_SALE_HARD_CAP = 200000000 * 10**uint256(DECIMAL);
+    uint256 public constant PRE_SALE_HARD_CAP = 100000000 * 10**uint256(DECIMAL);
     
     //main sale cap
-    uint256 public MAIN_SALE_HARD_CAP = 300000000 * 10**uint256(DECIMAL);
-
-    // Total Wei raised
-    uint256 public weiRaised = 0;
-
-    uint8 private constant DECIMAL = 18;
+    uint256 public constant MAIN_SALE_HARD_CAP = 400000000 * 10**uint256(DECIMAL);
 
     /// Issue event index starting from 0.
     uint64 public issuedIndex = 0;
 
 
     /// pre-sale start time; Is equivalent to: Tue, 01 May 2018 @ 1:00pm (UTC) ; Round 1
-    uint64 private constant date01May2018 = 1525179600;
+    uint64 public constant date01May2018 = 1525179600;
 
     /// pre-sale end time; Is equivalent to: Thu, 31 May 2018 @ 11:59pm (UTC) ; Round 1
-    uint64 private constant date31May2018 = 1527811140;
+    uint64 public constant date31May2018 = 1527811140;
 
     /// main-sale start time; Is equivalent to: Mon, 13 Aug 2018 @ 1:00pm (UTC) ; Round 2
-    uint64 private constant date13Aug2018 = 1534165200;
+    uint64 public constant date13Aug2018 = 1534165200;
 
     /// main-sale end time; Is equivalent to: Fri, 07 Sep 2018 @ 11:59pm (UTC)  ; Round 2
-    uint64 private constant date7Sep2018 = 1536364740;
+    uint64 public constant date7Sep2018 = 1536364740;
 
 
     /// Emitted for each sucuessful token purchase.
@@ -65,8 +65,7 @@ contract CycledCrowdsale is Ownable {
     */
     modifier onlyWhileOpen {
         uint64 _now = uint64(block.timestamp);
-        require( (_now >= date01May2018 && _now <= date31May2018) || 
-                    (_now >= date13Aug2018 && _now <= date7Sep2018) );
+        require((_now >= date01May2018 && _now <= date31May2018) || (_now >= date13Aug2018 && _now <= date7Sep2018 && goalReached()));
         _;
     }
 
@@ -74,14 +73,18 @@ contract CycledCrowdsale is Ownable {
     * @dev Reverts if halted 
     */
     modifier stopIfHalted {
-      require(!halted);
-      _;
+        require(!halted);
+        _;
     }
 
-    function CycledCrowdsale(address _tokenAddress, address _whitelistAddress, address _fundWallet) public {
+    function CycledCrowdsale(address _tokenAddress, uint256 _goal, address _whitelistAddress, address _fundWallet) public 
+    RefundableCrowdsale(_goal, _fundWallet, date31May2018)
+    {
         require(_tokenAddress != address(0));
         require(_whitelistAddress != address(0));
         require(_fundWallet != address(0));
+        require(_goal > 0 && _goal <= PRE_SALE_HARD_CAP.add(MAIN_SALE_HARD_CAP));
+
         tokenWallet = msg.sender;
         fundWallet = _fundWallet;
         token = CycledToken(_tokenAddress);
@@ -101,22 +104,16 @@ contract CycledCrowdsale is Ownable {
     */
     function buyTokens(address _beneficiary) public stopIfHalted payable {
         uint256 weiAmount = msg.value;
-        require(whitelist.isWhitelisted(_beneficiary));
-        doIssueTokens(_beneficiary, weiAmount);
-        fundWallet.transfer(weiAmount);
-    }
-
         
-    /* 
-    * @dev tranfer tokens to beneficiary as per its investment.
-    * @param _beneficiary to which tranfer token
-    * @param _investedWieAmount investment amount by the beneficiary
-    */
-    function issueTokens(address _beneficiary, uint256 _investedWieAmount) public onlyOwner stopIfHalted onlyWhileOpen {
-       doIssueTokens(_beneficiary, _investedWieAmount);
+        require(_beneficiary != address(0));
+        require(weiAmount >= 0.05 ether);
+      
+        require(whitelist.isWhitelisted(_beneficiary));
+
+        doIssueTokens(_beneficiary, weiAmount);
+        forwardFundsToWallet();
     }
 
-    
     /* 
     * @dev Determine the current sale round.
     * @return current sale round by date.
@@ -148,10 +145,6 @@ contract CycledCrowdsale is Ownable {
     * @param _investedWieAmount amount to invest
     */
     function doIssueTokens(address _beneficiary, uint256 _investedWieAmount) internal onlyWhileOpen {
-
-        require(_beneficiary != address(0));
-        require(_investedWieAmount >= 0.05 ether);
-        
         uint256 _currentSaleCap = currentSaleCap();
         require(tokenSold < _currentSaleCap);
 
@@ -177,7 +170,7 @@ contract CycledCrowdsale is Ownable {
         token.transferFrom(tokenWallet, _beneficiary, tokens);
 
         // event is fired when tokens issued
-        Issue(issuedIndex++, _beneficiary, tokens);
+        emit Issue(issuedIndex++, _beneficiary, tokens);
 
     }
 
@@ -189,7 +182,7 @@ contract CycledCrowdsale is Ownable {
     function getTokenAfterDiscount(uint256 _weiAmount, uint256 _totalTokenSold) public view returns (uint256) {
         
         uint256 round = currentSale();        
-        uint256 maxTokenForMaxDiscount = (75000000 * 10**uint256(18));
+        uint256 maxTokenForMaxDiscount = FIFTY_PERCENT_DISCOUNTED_TOKENS;
         
         // No discount
         if (round == 2) {
@@ -221,7 +214,7 @@ contract CycledCrowdsale is Ownable {
     function getTokenPriceAfterDiscount(uint256 _tokenAmount, uint256 _totalTokenSold) public view returns (uint256) {
         
         uint256 round = currentSale();        
-        uint256 maxTokenForMaxDiscount = (75000000 * 10**uint256(18));
+        uint256 maxTokenForMaxDiscount = FIFTY_PERCENT_DISCOUNTED_TOKENS;
         
         // No discount
         if (round == 2) {
@@ -244,12 +237,25 @@ contract CycledCrowdsale is Ownable {
         return 0;
     }
 
+
+    /*
+    * @dev forward funds
+    */
+    function forwardFundsToWallet() internal {  
+        if (goalReached()) {
+            //After goal reached, funds are transfered to fundWallet
+            fundWallet.transfer(msg.value);
+        } else {
+            //Storing funds to vault, till goal reached
+            _forwardFunds();
+        }   
+    }
+
     /*
     * @dev forward funds to fundwallet if any stuck in contract 
     */
     function forwardFunds() onlyOwner public {
-        address thisAddress = this;
-        fundWallet.transfer(thisAddress.balance);
+        fundWallet.transfer(address(this).balance);
     }
 
     // called by the owner on emergency, triggers stopped state

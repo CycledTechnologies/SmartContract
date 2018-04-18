@@ -1,5 +1,5 @@
 {
-  "name": "truffle-init-webpack",
+  "name": "Cycled Token",
   "version": "0.0.2",
   "description": "Frontend example using truffle v3",
   "scripts": {
@@ -43,8 +43,8 @@
   },
   "dependencies": {
     "@daonomic/trezor-wallet-provider": "0.0.4",
-    "truffle-hdwallet-provider": "0.0.3",
     "pryjs": "^1.0.3",
-    "zeppelin-solidity": "^1.5.0"
+    "truffle-hdwallet-provider": "0.0.3",
+    "zeppelin-solidity": "1.8.0"
   }
 }
