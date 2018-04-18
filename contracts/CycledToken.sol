@@ -32,7 +32,7 @@ contract CycledToken is BurnableToken, PausableToken {
 
         totalSupply_ = HARD_CAP;
         
-        //20% of the hard cap, reserve for pre-sale
+        //50% of the hard cap, reserve for crowd-sale
         balances[msg.sender] = totalSupply_.mul(50).div(100); 
         emit Transfer(0x0, msg.sender, totalSupply_.mul(50).div(100));
 
