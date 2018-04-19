@@ -313,6 +313,8 @@ contract ERC20 is ERC20Basic {
   event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
+
+
 /**
  * @title Basic token
  * @dev Basic version of StandardToken, with no allowances.
@@ -357,8 +359,6 @@ contract BasicToken is ERC20Basic {
   }
 
 }
-
-
 
 
 /**
@@ -534,7 +534,6 @@ contract PausableToken is StandardToken, Pausable {
     return super.decreaseApproval(_spender, _subtractedValue);
   }
 }
-
 
 
 
@@ -754,7 +753,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
 
     uint8 private constant DECIMAL = 18;
 
-    uint256 public constant  FIFTY_PERCENT_DISCOUNTED_TOKENS = 75000000 * 10**uint256(DECIMAL);
+   uint256 public constant  FIFTY_PERCENT_DISCOUNTED_TOKENS = 75000000 * 10**uint256(DECIMAL);
 
     //pre sale cap
     uint256 public constant PRE_SALE_HARD_CAP = 100000000 * 10**uint256(DECIMAL);
@@ -825,15 +824,15 @@ contract CycledCrowdsale is RefundableCrowdsale {
     * @param _beneficiary to which token must transfer
     */
     function buyTokens(address _beneficiary) public stopIfHalted payable {
-        uint256 weiAmount = msg.value;
-        
+        uint256 weiAmount = msg.value;        
         require(_beneficiary != address(0));
         require(weiAmount >= 0.05 ether);
       
         require(whitelist.isWhitelisted(_beneficiary));
 
-        doIssueTokens(_beneficiary, weiAmount);
-        forwardFundsToWallet();
+        uint256 _investedWieAmount = doIssueTokens(_beneficiary, weiAmount);
+        
+        forwardFundsToWallet(_investedWieAmount);
     }
 
     /* 
@@ -866,7 +865,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
     * @param _beneficiary address that the tokens will be sent to.
     * @param _investedWieAmount amount to invest
     */
-    function doIssueTokens(address _beneficiary, uint256 _investedWieAmount) internal onlyWhileOpen {
+    function doIssueTokens(address _beneficiary, uint256 _investedWieAmount) internal onlyWhileOpen returns (uint256) {
         uint256 _currentSaleCap = currentSaleCap();
         require(tokenSold < _currentSaleCap);
 
@@ -894,6 +893,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
         // event is fired when tokens issued
         emit Issue(issuedIndex++, _beneficiary, tokens);
 
+        return _investedWieAmount;
     }
 
    /*
@@ -963,10 +963,14 @@ contract CycledCrowdsale is RefundableCrowdsale {
     /*
     * @dev forward funds
     */
-    function forwardFundsToWallet() internal {  
+    function forwardFundsToWallet(uint256 investedWieAmount) internal {  
         if (goalReached()) {
             //After goal reached, funds are transfered to fundWallet
-            fundWallet.transfer(msg.value);
+            fundWallet.transfer(investedWieAmount);
+            // refund if additional amount paid
+            if(investedWieAmount < msg.value) {
+                msg.sender.transfer(msg.value.sub(investedWieAmount));
+            }
         } else {
             //Storing funds to vault, till goal reached
             _forwardFunds();
