@@ -33,7 +33,7 @@ contract CycledToken is BurnableToken, PausableToken {
 
         totalSupply_ = HARD_CAP;
         
-        //20% of the hard cap, reserve for pre-sale
+        //50% of the hard cap, reserve for crowd-sale
         balances[msg.sender] = totalSupply_.mul(50).div(100); 
         emit Transfer(0x0, msg.sender, totalSupply_.mul(50).div(100));
 
@@ -87,6 +87,7 @@ contract CycledToken is BurnableToken, PausableToken {
         require(transferEnabled || from == owner);
         return super.transferFrom(from, to, value);
     }
+
 
     function burnFrom(address _from, uint256 _value) public returns (bool) {
         require(_value <= balances[_from]);
