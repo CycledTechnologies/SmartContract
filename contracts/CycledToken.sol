@@ -88,7 +88,6 @@ contract CycledToken is BurnableToken, PausableToken {
         return super.transferFrom(from, to, value);
     }
 
-
     function burnFrom(address _from, uint256 _value) public returns (bool) {
         require(_value <= balances[_from]);
         require(_value <= allowed[_from][msg.sender]);
@@ -100,4 +99,5 @@ contract CycledToken is BurnableToken, PausableToken {
         emit Burn(_from, _value);
         return true;
     }
+
 }
