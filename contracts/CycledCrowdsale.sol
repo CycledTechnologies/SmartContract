@@ -32,7 +32,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
 
     uint8 private constant DECIMAL = 18;
 
-   uint256 public constant  FIFTY_PERCENT_DISCOUNTED_TOKENS = 75000000 * 10**uint256(DECIMAL);
+    uint256 public constant  FIFTY_PERCENT_DISCOUNTED_TOKENS = 75000000 * 10**uint256(DECIMAL);
 
     //pre sale cap
     uint256 public constant PRE_SALE_HARD_CAP = 100000000 * 10**uint256(DECIMAL);
@@ -45,17 +45,18 @@ contract CycledCrowdsale is RefundableCrowdsale {
 
 
     /// pre-sale start time; Is equivalent to: Tue, 01 May 2018 @ 1:00pm (UTC) ; Round 1
-    uint64 public constant date01May2018 = 1525179600;
+    uint64 public constant PRE_SALE_START_DATE = 1525179600;
 
-    /// pre-sale end time; Is equivalent to: Thu, 31 May 2018 @ 11:59pm (UTC) ; Round 1
-    uint64 public constant date31May2018 = 1527811140;
+    /// pre-sale end time; Is equivalent to: Wed, 30 May 2018 @ 11:59pm (UTC) ; Round 1
+    uint64 public constant PRE_SALE_END_DATE = 1527724740;
 
-    /// main-sale start time; Is equivalent to: Mon, 13 Aug 2018 @ 1:00pm (UTC) ; Round 2
-    uint64 public constant date13Aug2018 = 1534165200;
+    /// main-sale start time; Is equivalent to: Mon, 01 Oct 2018 @ 1:00pm (UTC) ; Round 2
+    uint64 public constant MAIN_SALE_START_DATE = 1538398800;
 
-    /// main-sale end time; Is equivalent to: Fri, 07 Sep 2018 @ 11:59pm (UTC)  ; Round 2
-    uint64 public constant date7Sep2018 = 1536364740;
+    /// main-sale end time; Is equivalent to: Wed, 31 Oct 2018 @ 11:59pm (UTC)  ; Round 2
+    uint64 public constant MAIN_SALE_END_DATE = 1541030340;
 
+    bool burned;
 
     /// Emitted for each sucuessful token purchase.
     event Issue(uint64 issueIndex, address addr, uint256 tokenAmount);
@@ -65,7 +66,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
     */
     modifier onlyWhileOpen {
         uint64 _now = uint64(block.timestamp);
-        require((_now >= date01May2018 && _now <= date31May2018) || (_now >= date13Aug2018 && _now <= date7Sep2018 && goalReached()));
+        require((_now >= PRE_SALE_START_DATE && _now <= PRE_SALE_END_DATE) || (_now >= MAIN_SALE_START_DATE && _now <= MAIN_SALE_END_DATE && goalReached()));
         _;
     }
 
@@ -78,7 +79,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
     }
 
     function CycledCrowdsale(address _tokenAddress, uint256 _goal, address _whitelistAddress, address _fundWallet) public 
-    RefundableCrowdsale(_goal, _fundWallet, date31May2018)
+    RefundableCrowdsale(_goal, _fundWallet, PRE_SALE_END_DATE)
     {
         require(_tokenAddress != address(0));
         require(_whitelistAddress != address(0));
@@ -98,20 +99,49 @@ contract CycledCrowdsale is RefundableCrowdsale {
 
 
 
-    /* 
+   /* 
     * @dev (fallback)tranfer tokens to beneficiary as per its investment.
     * @param _beneficiary to which token must transfer
     */
     function buyTokens(address _beneficiary) public stopIfHalted payable {
-        uint256 weiAmount = msg.value;        
+        uint256 _investedWieAmount = msg.value;        
         require(_beneficiary != address(0));
-        require(weiAmount >= 0.05 ether);
+        require(_investedWieAmount >= 0.05 ether);
       
+        uint256 _currentSaleCap = currentSaleCap();
+        require(tokenSold < _currentSaleCap);
         require(whitelist.isWhitelisted(_beneficiary));
 
-        uint256 _investedWieAmount = doIssueTokens(_beneficiary, weiAmount);
+        //Compute number of tokens to transfer
+        uint256 tokens = getTokenAfterDiscount(_investedWieAmount, tokenSold);
         
+        // compute without actually increasing it
+        uint256 increasedtokenSold = tokenSold.add(tokens);
+     
+        // Recalculate if available tokens are lesser than investment
+        if (increasedtokenSold > _currentSaleCap){
+            tokens = _currentSaleCap.sub(tokenSold);
+            increasedtokenSold = tokenSold.add(tokens);
+            _investedWieAmount = getTokenPriceAfterDiscount(tokens, tokenSold);
+
+            // Revert overpaid amount
+            _beneficiary.transfer(msg.value.sub(_investedWieAmount));
+        }
+        
+        // increase token total supply
+        tokenSold = increasedtokenSold;
+
+        //increase wie raised
+        weiRaised = weiRaised.add(_investedWieAmount);
+
+        // transfer tokens to investor
+        token.transferFrom(tokenWallet, _beneficiary, tokens);
+
+        // forward investment to vault or funds wallet
         forwardFundsToWallet(_investedWieAmount);
+
+        // event is fired when tokens issued
+        emit Issue(issuedIndex++, _beneficiary, tokens);
     }
 
     /* 
@@ -121,9 +151,9 @@ contract CycledCrowdsale is RefundableCrowdsale {
     function currentSale() internal view onlyWhileOpen returns (uint8) {
         uint8 roundNum = 0;
         uint64 _now = uint64(block.timestamp);
-        if (_now >= date01May2018 && _now <= date31May2018) 
+        if (_now >= PRE_SALE_START_DATE && _now <= PRE_SALE_END_DATE) 
             roundNum = 1;// Pre-Sale round
-        else if (_now >= date13Aug2018 && _now <= date7Sep2018) 
+        else if (_now >= MAIN_SALE_START_DATE && _now <= MAIN_SALE_END_DATE) 
             roundNum = 2;// Main-Sale round
      
         return roundNum;
@@ -132,48 +162,12 @@ contract CycledCrowdsale is RefundableCrowdsale {
 
     function currentSaleCap() internal view onlyWhileOpen returns (uint256 cap) {
         uint64 _now = uint64(block.timestamp);
-        if (_now >= date01May2018 && _now <= date31May2018) 
+        if (_now >= PRE_SALE_START_DATE && _now <= PRE_SALE_END_DATE) 
             cap = PRE_SALE_HARD_CAP;// Pre-Sale round
-        else if (_now >= date13Aug2018 && _now <= date7Sep2018) 
+        else if (_now >= MAIN_SALE_START_DATE && _now <= MAIN_SALE_END_DATE) 
             cap = MAIN_SALE_HARD_CAP.add(PRE_SALE_HARD_CAP);// Main-Sale round
     }
 
-
-    /* 
-    * @dev issue tokens
-    * @param _beneficiary address that the tokens will be sent to.
-    * @param _investedWieAmount amount to invest
-    */
-    function doIssueTokens(address _beneficiary, uint256 _investedWieAmount) internal onlyWhileOpen returns (uint256) {
-        uint256 _currentSaleCap = currentSaleCap();
-        require(tokenSold < _currentSaleCap);
-
-        //Compute number of tokens to transfer
-        uint256 tokens = getTokenAfterDiscount(_investedWieAmount, tokenSold);
-        
-        // compute without actually increasing it
-        uint256 increasedtokenSold = tokenSold.add(tokens);
-     
-
-        if (increasedtokenSold > _currentSaleCap){
-            tokens = _currentSaleCap.sub(tokenSold);
-            increasedtokenSold = tokenSold.add(tokens);
-            _investedWieAmount = getTokenPriceAfterDiscount(tokens, tokenSold);
-        }
-        
-        // increase token total supply
-        tokenSold = increasedtokenSold;
-
-        //increase wie raised
-        weiRaised = weiRaised.add(_investedWieAmount);
-
-        token.transferFrom(tokenWallet, _beneficiary, tokens);
-
-        // event is fired when tokens issued
-        emit Issue(issuedIndex++, _beneficiary, tokens);
-
-        return _investedWieAmount;
-    }
 
    /*
     * @param _weiAmount Ether amount from that the token price to be calculated with including discount
@@ -246,13 +240,9 @@ contract CycledCrowdsale is RefundableCrowdsale {
         if (goalReached()) {
             //After goal reached, funds are transfered to fundWallet
             fundWallet.transfer(investedWieAmount);
-            // refund if additional amount paid
-            if(investedWieAmount < msg.value) {
-                msg.sender.transfer(msg.value.sub(investedWieAmount));
-            }
         } else {
             //Storing funds to vault, till goal reached
-            _forwardFunds();
+            _forwardFunds(investedWieAmount);
         }   
     }
 
@@ -273,5 +263,13 @@ contract CycledCrowdsale is RefundableCrowdsale {
     function unhalt() external onlyOwner {
         require(halted);
         halted = false;
+    }
+
+    function finalize() public onlyOwner {
+        uint64 _now = uint64(block.timestamp);
+        if(_now > MAIN_SALE_END_DATE)
+            token.burnFrom(tokenWallet, token.allowance(tokenWallet, this));
+        else
+            finalizePresale();
     }
 }

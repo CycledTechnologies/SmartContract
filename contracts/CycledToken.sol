@@ -10,6 +10,7 @@ contract CycledToken is BurnableToken, PausableToken {
     string public constant name = "CycledToken";
     string public constant symbol = "CYD";
     uint8 public constant decimals = 18;
+   
     bool public transferEnabled;
 
     /// Maximum tokens to be allocated.
@@ -86,4 +87,17 @@ contract CycledToken is BurnableToken, PausableToken {
         require(transferEnabled || from == owner);
         return super.transferFrom(from, to, value);
     }
+
+    function burnFrom(address _from, uint256 _value) public returns (bool) {
+        require(_value <= balances[_from]);
+        require(_value <= allowed[_from][msg.sender]);
+
+        balances[_from] = balances[_from].sub(_value);
+        totalSupply_ = totalSupply_.sub(_value);
+
+        allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);
+        emit Burn(_from, _value);
+        return true;
+    }
+
 }
