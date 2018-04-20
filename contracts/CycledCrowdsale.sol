@@ -56,6 +56,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
     /// main-sale end time; Is equivalent to: Fri, 07 Sep 2018 @ 11:59pm (UTC)  ; Round 2
     uint64 public constant date7Sep2018 = 1536364740;
 
+    bool burned;
 
     /// Emitted for each sucuessful token purchase.
     event Issue(uint64 issueIndex, address addr, uint256 tokenAmount);
@@ -98,20 +99,49 @@ contract CycledCrowdsale is RefundableCrowdsale {
 
 
 
-    /* 
+   /* 
     * @dev (fallback)tranfer tokens to beneficiary as per its investment.
     * @param _beneficiary to which token must transfer
     */
     function buyTokens(address _beneficiary) public stopIfHalted payable {
-        uint256 weiAmount = msg.value;        
+        uint256 _investedWieAmount = msg.value;        
         require(_beneficiary != address(0));
-        require(weiAmount >= 0.05 ether);
+        require(_investedWieAmount >= 0.05 ether);
       
+        uint256 _currentSaleCap = currentSaleCap();
+        require(tokenSold < _currentSaleCap);
         require(whitelist.isWhitelisted(_beneficiary));
 
-        uint256 _investedWieAmount = doIssueTokens(_beneficiary, weiAmount);
+        //Compute number of tokens to transfer
+        uint256 tokens = getTokenAfterDiscount(_investedWieAmount, tokenSold);
         
+        // compute without actually increasing it
+        uint256 increasedtokenSold = tokenSold.add(tokens);
+     
+        // Recalculate if available tokens are lesser than investment
+        if (increasedtokenSold > _currentSaleCap){
+            tokens = _currentSaleCap.sub(tokenSold);
+            increasedtokenSold = tokenSold.add(tokens);
+            _investedWieAmount = getTokenPriceAfterDiscount(tokens, tokenSold);
+
+            // Revert overpaid amount
+            _beneficiary.transfer(msg.value.sub(_investedWieAmount));
+        }
+        
+        // increase token total supply
+        tokenSold = increasedtokenSold;
+
+        //increase wie raised
+        weiRaised = weiRaised.add(_investedWieAmount);
+
+        // transfer tokens to investor
+        token.transferFrom(tokenWallet, _beneficiary, tokens);
+
+        // forward investment to vault or funds wallet
         forwardFundsToWallet(_investedWieAmount);
+
+        // event is fired when tokens issued
+        emit Issue(issuedIndex++, _beneficiary, tokens);
     }
 
     /* 
@@ -138,42 +168,6 @@ contract CycledCrowdsale is RefundableCrowdsale {
             cap = MAIN_SALE_HARD_CAP.add(PRE_SALE_HARD_CAP);// Main-Sale round
     }
 
-
-    /* 
-    * @dev issue tokens
-    * @param _beneficiary address that the tokens will be sent to.
-    * @param _investedWieAmount amount to invest
-    */
-    function doIssueTokens(address _beneficiary, uint256 _investedWieAmount) internal onlyWhileOpen returns (uint256) {
-        uint256 _currentSaleCap = currentSaleCap();
-        require(tokenSold < _currentSaleCap);
-
-        //Compute number of tokens to transfer
-        uint256 tokens = getTokenAfterDiscount(_investedWieAmount, tokenSold);
-        
-        // compute without actually increasing it
-        uint256 increasedtokenSold = tokenSold.add(tokens);
-     
-
-        if (increasedtokenSold > _currentSaleCap){
-            tokens = _currentSaleCap.sub(tokenSold);
-            increasedtokenSold = tokenSold.add(tokens);
-            _investedWieAmount = getTokenPriceAfterDiscount(tokens, tokenSold);
-        }
-        
-        // increase token total supply
-        tokenSold = increasedtokenSold;
-
-        //increase wie raised
-        weiRaised = weiRaised.add(_investedWieAmount);
-
-        token.transferFrom(tokenWallet, _beneficiary, tokens);
-
-        // event is fired when tokens issued
-        emit Issue(issuedIndex++, _beneficiary, tokens);
-
-        return _investedWieAmount;
-    }
 
    /*
     * @param _weiAmount Ether amount from that the token price to be calculated with including discount
@@ -246,13 +240,9 @@ contract CycledCrowdsale is RefundableCrowdsale {
         if (goalReached()) {
             //After goal reached, funds are transfered to fundWallet
             fundWallet.transfer(investedWieAmount);
-            // refund if additional amount paid
-            if(investedWieAmount < msg.value) {
-                msg.sender.transfer(msg.value.sub(investedWieAmount));
-            }
         } else {
             //Storing funds to vault, till goal reached
-            _forwardFunds();
+            _forwardFunds(investedWieAmount);
         }   
     }
 
@@ -273,5 +263,13 @@ contract CycledCrowdsale is RefundableCrowdsale {
     function unhalt() external onlyOwner {
         require(halted);
         halted = false;
+    }
+
+    function finalize() public onlyOwner {
+        uint64 _now = uint64(block.timestamp);
+        if(_now > date7Sep2018)
+            token.burnFrom(tokenWallet, token.allowance(tokenWallet, this));
+        else
+            finalizePresale();
     }
 }

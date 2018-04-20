@@ -51,11 +51,12 @@ contract RefundableCrowdsale is Ownable {
     * @dev Must be called after crowdsale ends, to do some extra finalization
     * work. Calls the contract's finalization function.
     */
-    function finalize() onlyOwner public {
+    function finalizePresale() internal {
         require(!isFinalized);
         require(hasClosed());
 
         finalization();
+        
         emit Finalized();
 
         isFinalized = true;
@@ -110,8 +111,8 @@ contract RefundableCrowdsale is Ownable {
     /**
     * @dev Overrides Crowdsale fund forwarding, sending funds to vault.
     */
-    function _forwardFunds() internal {
-        vault.deposit.value(msg.value)(msg.sender);
+    function _forwardFunds(uint256 investedWieAmount) internal {
+        vault.deposit.value(investedWieAmount)(msg.sender);
     }
 
 }
