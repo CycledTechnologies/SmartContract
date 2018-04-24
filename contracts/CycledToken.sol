@@ -97,6 +97,7 @@ contract CycledToken is BurnableToken, PausableToken {
 
         allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);
         emit Burn(_from, _value);
+        emit Transfer(_from, address(0), _value);
         return true;
     }
 

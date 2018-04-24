@@ -138,7 +138,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
         token.transferFrom(tokenWallet, _beneficiary, tokens);
 
         // forward investment to vault or funds wallet
-        forwardFundsToWallet(_investedWieAmount);
+        forwardFundsToWallet(_investedWieAmount, _beneficiary);
 
         // event is fired when tokens issued
         emit Issue(issuedIndex++, _beneficiary, tokens);
@@ -236,13 +236,13 @@ contract CycledCrowdsale is RefundableCrowdsale {
     /*
     * @dev forward funds
     */
-    function forwardFundsToWallet(uint256 investedWieAmount) internal {  
+    function forwardFundsToWallet(uint256 investedWieAmount, address beneficiary) internal {  
         if (goalReached()) {
             //After goal reached, funds are transfered to fundWallet
             fundWallet.transfer(investedWieAmount);
         } else {
             //Storing funds to vault, till goal reached
-            _forwardFunds(investedWieAmount);
+            _forwardFunds(investedWieAmount, beneficiary);
         }   
     }
 
