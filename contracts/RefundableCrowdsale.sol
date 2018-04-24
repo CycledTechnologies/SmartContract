@@ -111,8 +111,8 @@ contract RefundableCrowdsale is Ownable {
     /**
     * @dev Overrides Crowdsale fund forwarding, sending funds to vault.
     */
-    function _forwardFunds(uint256 investedWieAmount) internal {
-        vault.deposit.value(investedWieAmount)(msg.sender);
+    function _forwardFunds(uint256 investedWieAmount, address beneficiary) internal {
+        vault.deposit.value(investedWieAmount)(beneficiary);
     }
 
 }
