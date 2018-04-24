@@ -285,8 +285,8 @@ contract RefundableCrowdsale is Ownable {
     /**
     * @dev Overrides Crowdsale fund forwarding, sending funds to vault.
     */
-    function _forwardFunds(uint256 investedWieAmount) internal {
-        vault.deposit.value(investedWieAmount)(msg.sender);
+    function _forwardFunds(uint256 investedWieAmount, address beneficiary) internal {
+        vault.deposit.value(investedWieAmount)(beneficiary);
     }
 
 }
@@ -313,6 +313,8 @@ contract ERC20 is ERC20Basic {
   function approve(address spender, uint256 value) public returns (bool);
   event Approval(address indexed owner, address indexed spender, uint256 value);
 }
+
+
 
 /**
  * @title Basic token
@@ -544,8 +546,6 @@ contract PausableToken is StandardToken, Pausable {
 
 
 
-
-
 /**
  * @title Burnable Token
  * @dev Token that can be irreversibly burned (destroyed).
@@ -602,7 +602,7 @@ contract CycledToken is BurnableToken, PausableToken {
 
         totalSupply_ = HARD_CAP;
         
-        //20% of the hard cap, reserve for pre-sale
+        //50% of the hard cap, reserve for crowd-sale
         balances[msg.sender] = totalSupply_.mul(50).div(100); 
         emit Transfer(0x0, msg.sender, totalSupply_.mul(50).div(100));
 
@@ -666,9 +666,12 @@ contract CycledToken is BurnableToken, PausableToken {
 
         allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);
         emit Burn(_from, _value);
+        emit Transfer(_from, address(0), _value);
         return true;
     }
+
 }
+
 
 
 
@@ -873,7 +876,7 @@ contract CycledCrowdsale is RefundableCrowdsale {
         token.transferFrom(tokenWallet, _beneficiary, tokens);
 
         // forward investment to vault or funds wallet
-        forwardFundsToWallet(_investedWieAmount);
+        forwardFundsToWallet(_investedWieAmount, _beneficiary);
 
         // event is fired when tokens issued
         emit Issue(issuedIndex++, _beneficiary, tokens);
@@ -971,13 +974,13 @@ contract CycledCrowdsale is RefundableCrowdsale {
     /*
     * @dev forward funds
     */
-    function forwardFundsToWallet(uint256 investedWieAmount) internal {  
+    function forwardFundsToWallet(uint256 investedWieAmount, address beneficiary) internal {  
         if (goalReached()) {
             //After goal reached, funds are transfered to fundWallet
             fundWallet.transfer(investedWieAmount);
         } else {
             //Storing funds to vault, till goal reached
-            _forwardFunds(investedWieAmount);
+            _forwardFunds(investedWieAmount, beneficiary);
         }   
     }
 
